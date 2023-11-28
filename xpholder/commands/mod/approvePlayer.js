@@ -90,6 +90,7 @@ module.exports = {
             if (!(
                 sheetUrl.startsWith("https://ddb.ac/characters/") ||
                 sheetUrl.startsWith("https://dicecloud.com/character/") ||
+                sheetUrl.startsWith("https://v1.dicecloud.com/character/") ||
                 sheetUrl.startsWith("https://www.dndbeyond.com/profile/") ||
                 sheetUrl.startsWith("https://www.dndbeyond.com/characters/") ||
                 sheetUrl.startsWith("https://docs.google.com/spreadsheets/")
