@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 
-const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_RETIRE_COLOUR, TESTING_SERVER_ID, LOGING_CHANNEL_ID, ERROR_CHANNEL_ID } = require("./config.json");
+const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_RETIRE_COLOUR, TESTING_SERVER_ID, LOGGING_CHANNEL_ID, ERROR_CHANNEL_ID } = require("./config.json");
 
 /*
 ------
@@ -374,7 +374,7 @@ async function logCommand(interaction){
 
     // FETCHING THE TESTING SERVER AND LOG CHANNEL
     const testingServer = await interaction.client.guilds.fetch(TESTING_SERVER_ID);
-    const loggingChannel = await testingServer.channels.fetch(LOGING_CHANNEL_ID);
+    const loggingChannel = await testingServer.channels.fetch(LOGGING_CHANNEL_ID);
 
     // SENDING LOG EMBED
     loggingChannel.send({

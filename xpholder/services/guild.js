@@ -15,8 +15,11 @@ class guildService {
     INITALIZATION
     -------------
     */
+
     async init() {
-        if (!await this.isRegistered()) { return }
+        if (!await this.isRegistered()) { 
+            return;
+        }
         this.config = await this.loadInit("config", "name", "value");
         this.levels = await this.loadInit("levels", "level", "xp_to_next");
         this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
@@ -35,6 +38,7 @@ class guildService {
     VALIDATOR
     ---------
     */
+
     isMod(listOfRoles) {
         return listOfRoles.includes(this.config["moderationRoleId"]);
     }
@@ -51,6 +55,7 @@ class guildService {
     CHARACTER
     ---------
     */
+
     async deleteCharacter(character) {
         await this.database.openDatabase();
         const response = await this.database.getAll(`DELETE FROM characters WHERE character_id = "${character["character_id"]}";`);
@@ -112,6 +117,7 @@ class guildService {
     UPDATING TABLES
     ---------------
     */
+
     async updateConfig(config) {
         await this.database.openDatabase();
         for (const [name, value] of Object.entries(config)) {
@@ -169,13 +175,16 @@ class guildService {
     REGISTERING A SERVER
     --------------------
     */
+
     async registerServer(configDetails) {
         await this.createDatabases();
+        
         /*
         ---------------------
         POPULATING THE CONFIG
         ---------------------
         */
+        
         let configInit = "INSERT INTO config ( name, value ) VALUES ";
         let delimiter = "";
         for (const [name, value] of Object.entries(configDetails)) {
@@ -185,11 +194,13 @@ class guildService {
         await this.database.openDatabase();
         this.database.execute(configInit);
         await this.database.closeDatabase();
+
         /*
         ---------------------
         POPULATING THE LEVELS
         ---------------------
         */
+
         let levelsInit = "INSERT INTO levels ( level, xp_to_next ) VALUES ";
         delimiter = "";
         for (const [level, xp_to_next] of Object.entries(LEVELS)) {
@@ -199,21 +210,25 @@ class guildService {
         await this.database.openDatabase();
         this.database.execute(levelsInit);
         await this.database.closeDatabase();
+
         /*
         --------------------
         POPULATING THE ROLES
         --------------------
         */
+
         let rolesInit = `INSERT INTO roles ( role_id, xp_bonus ) VALUES ("${configDetails["xpFreezeRoleId"]}", 0)`;
         await this.database.openDatabase();
         this.database.execute(rolesInit);
         await this.database.closeDatabase();
     }
+
     /*
     ------------------------
     CREATING TABLE FUNCTIONS
     ------------------------
     */
+
     async createDatabases() {
         await this.createChannelsTable();
         await this.createCharactersTable();

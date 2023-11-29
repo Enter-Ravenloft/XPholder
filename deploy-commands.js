@@ -5,8 +5,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const {CLIENT_ID, TESTING_SERVER_ID} = require("./xpholder/config.json");
-
+const { CLIENT_ID, TESTING_SERVER_ID } = require("./xpholder/config.json");
 
 const commands = [];
 let commandsPath = [

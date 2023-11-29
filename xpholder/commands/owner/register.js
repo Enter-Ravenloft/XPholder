@@ -27,15 +27,18 @@ module.exports = {
         VALIDATION
         ----------
         */
+
         if (interaction.user.id != interaction.guild.ownerId){
             await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
             return;
         }
+
         /*
         --------------
         INITALIZATIONS
         --------------
         */
+
         const MAX_CHARS = 10;
         const ROLES = interaction.guild.roles;
 
@@ -54,11 +57,13 @@ module.exports = {
             "allowPlayerManageXp": "off",
             "characterCount": characterCount
         };
+
         /*
         -----------------------
         GENERATING SERVER ROLES
         -----------------------
         */
+
         config["tier4RoleId"] = (await ROLES.create({ name: "Tier 4", color: [120, 81, 169], hoist: true, mentionable: true })).id;
         config["tier3RoleId"] = (await ROLES.create({ name: "Tier 3", color: [255, 215, 0], hoist: true, mentionable: true })).id;
         config["tier2RoleId"] = (await ROLES.create({ name: "Tier 2", color: [192, 192, 192], hoist: true, mentionable: true })).id;
@@ -71,8 +76,11 @@ module.exports = {
         for (let index = 1; index <= MAX_CHARS; index++) {
             if (index <= characterCount) {
                 config[`character${index}RoleId`] = (await ROLES.create({ name: `Character ${index}` })).id;
-            } else { config[`character${index}RoleId`] = 0; }
+            } else { 
+                config[`character${index}RoleId`] = 0; 
+            }
         }
+
         /*
         ------------------
         REGISTERING SERVER
