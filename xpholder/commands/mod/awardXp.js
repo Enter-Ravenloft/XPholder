@@ -51,8 +51,10 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (!guildService.isMod(interaction.member._roles) &&
-            interaction.user.id != interaction.guild.ownerId) {
+
+        if (!guildService.isMod(interaction.member._roles) 
+            && interaction.user.id != interaction.guild.ownerId
+            && !guildService.isDev(interaction.member._roles)) {
             await interaction.editReply("Sorry, you do not have the right role to use this command.");
             return;
         }

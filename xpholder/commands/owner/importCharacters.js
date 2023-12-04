@@ -25,15 +25,18 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (interaction.user.id != interaction.guild.ownerId) {
+
+        if (interaction.user.id != interaction.guild.ownerId && !guildService.isDev(interaction.member._roles)) {
             await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
             return;
         }
+
         /*
         --------------
         INITIALIZATION
         --------------
         */
+
         const csvFile = interaction.options.getAttachment("csv_file");
         // API call to discord to grab the data
         const response = await fetch(csvFile.url);

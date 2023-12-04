@@ -43,6 +43,10 @@ class guildService {
         return listOfRoles.includes(this.config["moderationRoleId"]);
     }
 
+    isDev(listOfRoles) {
+        return listOfRoles.includes(this.config["DEVELOPER_ROLE_ID"]);
+    }
+
     async isRegistered() {
         await this.database.openDatabase();
         this.registered = await this.database.getAll("SELECT * FROM config;") ? true : false;
