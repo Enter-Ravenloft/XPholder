@@ -24,6 +24,7 @@ send messages
 use slash commands
 create private threads
 Manage Roles
+attach files
 
 
 ## Local development

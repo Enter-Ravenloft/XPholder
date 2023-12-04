@@ -44,7 +44,7 @@ class guildService {
     }
 
     isDev(listOfRoles) {
-        return listOfRoles.includes(this.config["DEVELOPER_ROLE_ID"]);
+        return listOfRoles.includes(1059613628803850261);  // N.B. specific to Enter Raveloft 
     }
 
     async isRegistered() {
