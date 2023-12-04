@@ -106,10 +106,10 @@ module.exports = {
         VALIDATION
         ----------
         */
-        if (interaction.user.id != interaction.guild.ownerId && !guildService.isDev(interaction.member._roles)) {
-            await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
-            return;
-        }
+        // if (interaction.user.id != interaction.guild.ownerId && !guildService.isDev(interaction.member._roles)) {
+        //     await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.")
+        //     return;
+        // }
 
         /*
         --------------
