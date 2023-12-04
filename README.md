@@ -41,11 +41,11 @@ Clone the repo
 
 Run `npm init -y`, edit package.json
 
-`npm install firebase`
-
 Edit `xpholder/config.json` to give TESTING_SERVER_ID and CLIENT_ID (bot user id)
 
 Run `node deploy-commands.js` to install the bot commands on TESTING_SERVER_ID
+
+Run `node main.js` to start the bot
 
 ### Setting up the DB
 
@@ -54,3 +54,16 @@ Create the file `./guilds/<test-server-id>.db`
 Start the bot `node main.js`
 Run `/register`
 (Now commands like `/help` should work)
+
+Use `/import_characters_csv` to restore from a backup
+
+## Hosting on Replit
+
+Create Replit account
+
+https://replit.com/github -> import XPHolder repo
+
+Add the bot token as a Secret with name DISCORD_TOKEN
+
+Create the directory `./guilds/`
+Create the file `./guilds/<test-server-id>.db`
