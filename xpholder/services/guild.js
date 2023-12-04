@@ -44,7 +44,7 @@ class guildService {
     }
 
     isDev(listOfRoles) {
-        return listOfRoles.includes(1059613628803850261);  // N.B. specific to Enter Raveloft 
+        return listOfRoles.includes(1059613628803850261n);  // N.B. specific to Enter Raveloft 
     }
 
     async isRegistered() {
