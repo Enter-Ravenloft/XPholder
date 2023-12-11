@@ -2,10 +2,9 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 
 const { Client, Collection, GatewayIntentBits, Partials, EmbedBuilder, InteractionType, ChannelType } = require('discord.js');
-const sqlite3 = require("sqlite3");
+const { db } = require("./xpholder/database/postgres.js");
 
 const { guildService } = require("./xpholder/services/guild");
-const { sqlLite3DatabaseService } = require("./xpholder/database/sqlite");
 
 const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError } = require("./xpholder/utils");
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL } = require("./xpholder/config.json")
@@ -65,7 +64,7 @@ BOT COMMANDS
 client.once('ready', () => {
     //clearGuildCache();
     console.log("ready");
-    console.log(client.commands);
+    // console.log(client.commands);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -82,9 +81,7 @@ client.on('interactionCreate', async interaction => {
     const guildId = `${interaction.guildId}`;
 
     // LOADING GUILD SERVICE
-    const gService = new guildService(
-        await new sqlLite3DatabaseService(sqlite3, `./guilds/${guildId}.db`)
-    )
+    const gService = new guildService(db, guildId);
     await gService.init();
     if (!await gService.isRegistered() && command.data.name != "register") {
         // Try Catch on the reply, because this is a restful call, and errors can be found
@@ -150,13 +147,8 @@ client.on('messageCreate', async message => {
         */
 
         const guildId = `${message.guildId}`;
-        if (!fs.existsSync(`./guilds/${guildId}.db`)){ 
-            return; 
-        }
 
-        const gService = new guildService(
-            await new sqlLite3DatabaseService(sqlite3, `./guilds/${guildId}.db`)
-        )
+        const gService = new guildService(db, guildId);
         await gService.init();
         if (!await gService.isRegistered()) { 
             return; 

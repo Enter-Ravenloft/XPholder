@@ -1,9 +1,11 @@
-const { listOfObjsToObj } = require("../utils")
-const { LEVELS } = require("../config.json")
+const { listOfObjsToObj } = require("../utils");
+const { LEVELS } = require("../config.json");
+const format = require('pg-format');
 
 class guildService {
-    constructor(database) {
-        this.database = database;
+    constructor(database, guildId) {
+        this.db = database;
+        this.guildId = guildId;
 
         this.xpCache = {};
         this.registered = false;
@@ -27,10 +29,8 @@ class guildService {
     }
 
     async loadInit(table, primaryKey, value) {
-        await this.database.openDatabase();
-        let sqlTable = await this.database.getAll(`SELECT * FROM ${table};`)
-        await this.database.closeDatabase();
-        return listOfObjsToObj(sqlTable, primaryKey, value);
+        const res = await this.db.query(format("SELECT * FROM %I;", table));
+        return listOfObjsToObj(res.rows, primaryKey, value);
     }
 
     /*
@@ -44,14 +44,13 @@ class guildService {
     }
 
     isDev(listOfRoles) {
-        return listOfRoles.includes(1059613628803850261n);  // N.B. specific to Enter Raveloft 
+        return listOfRoles.includes("1059613628803850261");  // N.B. specific to Enter Raveloft 
     }
 
+    // TODO think about guild multitenancy - different schema per guild?
     async isRegistered() {
-        await this.database.openDatabase();
-        this.registered = await this.database.getAll("SELECT * FROM config;") ? true : false;
-        await this.database.closeDatabase();
-        return this.registered;
+        const res = await this.db.query("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'config');");
+        return res.rows[0].exists;
     }
 
     /*
@@ -61,59 +60,47 @@ class guildService {
     */
 
     async deleteCharacter(character) {
-        await this.database.openDatabase();
-        const response = await this.database.getAll(`DELETE FROM characters WHERE character_id = "${character["character_id"]}";`);
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("DELETE FROM characters WHERE character_id = $1;", [character["character_id"]]);
+        return res;
     }
 
     async getAllCharacters(playerId) {
-        await this.database.openDatabase();
-        const response = await this.database.getAll(`SELECT * FROM characters WHERE player_id = "${playerId}";`);
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("SELECT * FROM characters WHERE player_id = $1;", [playerId]);
+        return res.rows;
     }
 
     async getAllGuildCharacters(){
-        await this.database.openDatabase();
-        const response = await this.database.getAll(`SELECT * FROM characters;`);
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("SELECT * FROM characters;");
+        return res.rows;
     }
 
     async getCharacter(characterId) {
-        await this.database.openDatabase();
-        const response = await this.database.get(`SELECT * FROM characters WHERE character_id = "${characterId}";`)
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("SELECT * FROM characters WHERE character_id = $1;", [characterId]);
+        return res.rows.length == 0 ? null : res.rows[0];
     }
 
     async insertCharacter(character) {
-        await this.database.openDatabase();
-        const response = await this.database.execute(`INSERT INTO characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp) VALUES ( "${character.character_id}", ${character.character_index}, "${character.name}", "${character.sheet_url}", "${character.picture_url}", "${character.player_id}", ${character.xp} );`);
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query(
+            "INSERT INTO characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp) VALUES ( $1, $2, $3, $4, $5, $6, $7 );", 
+            [character.character_id, character.character_index, character.name, character.sheet_url, character.picture_url, character.player_id, character.xp]);
+        return res;
     }
 
     async updateCharacterInfo(character) {
-        await this.database.openDatabase();
-        const response = await this.database.execute(`UPDATE characters SET name = "${character.name}", sheet_url = "${character.sheet_url}", picture_url = "${character.picture_url}" WHERE character_id = "${character.character_id}";`)
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query(
+            "UPDATE characters SET name = $1, sheet_url = $2, picture_url = $3 WHERE character_id = $4;", 
+            [character.name, character.sheet_url, character.picture_url, character.character_id]);
+        return res;
 
     }
     async updateCharacterXP(character, deltaXp) {
-        await this.database.openDatabase();
-        const response = await this.database.execute(`UPDATE characters SET xp = xp + ${deltaXp} WHERE character_id = "${character.character_id}";`)
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("UPDATE characters SET xp = xp + $1 WHERE character_id = $2;", [deltaXp, character.character_id]);
+        return res;
 
     }
     async setCharacterXP(character) {
-        await this.database.openDatabase();
-        const response = await this.database.execute(`UPDATE characters SET xp = ${character.xp} WHERE character_id = "${character.character_id}";`)
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("UPDATE characters SET xp = $1 WHERE character_id = $2;", [character.xp, character.character_id])
+        return res;
     }
 
     /*
@@ -123,55 +110,47 @@ class guildService {
     */
 
     async updateConfig(config) {
-        await this.database.openDatabase();
         for (const [name, value] of Object.entries(config)) {
-            await this.database.execute(`UPDATE config SET value = "${value}" WHERE name = "${name}";`);
+            await this.db.query("UPDATE config SET value = $1 WHERE name = $2;", [value, name]);
         }
-        await this.database.closeDatabase();
 
-        this.config = await this.loadInit("config", "name", "value");
+        this.config = await this.loadInit("config");
     }
 
     async updateChannel(channelId, xpPerPost) {
         // IF THE XP IS POSITIVE ( ZERO INCLUDED ) WE WANT TO ADD THE ROLE TO THE DATABASE; ELSE, DELETE THE ROLE
-        await this.database.openDatabase();
         if (xpPerPost >= 0) {
             if (channelId in this.channels) {
-                await this.database.execute(`UPDATE channels SET xp_per_post = ${xpPerPost} WHERE channel_id = "${channelId}";`);
+                await this.db.query("UPDATE channels SET xp_per_post = $1 WHERE channel_id = $2;", [xpPerPost, channelId]);
             } else {
-                await this.database.execute(`INSERT INTO channels ( channel_id, xp_per_post ) VALUES ("${channelId}", ${xpPerPost});`);
+                await this.db.query("INSERT INTO channels ( channel_id, xp_per_post ) VALUES ($1, $2);", [channelId, xpPerPost]);
             }
         } else {
-            await this.database.execute(`DELETE FROM channels WHERE channel_id = "${channelId}";`);
+            await this.db.query("DELETE FROM channels WHERE channel_id = $1;", [channelId]);
         }
-        await this.database.closeDatabase();
 
-        this.channels = await this.loadInit("channels", "channel_id", "xp_per_post");
+        this.channels = await this.loadInit("channels");
     }
 
     async updateLevel(level, xpToNext) {
-        await this.database.openDatabase();
-        await this.database.execute(`UPDATE levels SET xp_to_next = ${xpToNext} WHERE level = ${level};`);
-        await this.database.closeDatabase();
+        await this.db.query("UPDATE levels SET xp_to_next = $1 WHERE level = $2;", [xpToNext, level]);
 
         this.levels = await this.loadInit("levels", "level", "xp_to_next");
     }
 
     async updateRole(roleId, xpBonus) {
         // IF THE XP IS POSITIVE ( ZERO INCLUDED ) WE WANT TO ADD THE ROLE TO THE DATABASE; ELSE, DELETE THE ROLE
-        await this.database.openDatabase();
         if (xpBonus >= 0) {
             if (roleId in this.roles) {
-                await this.database.execute(`UPDATE roles SET xp_bonus = ${xpBonus} WHERE role_id = "${roleId}";`);
+                await this.db.query("UPDATE roles SET xp_bonus = $1 WHERE role_id = $2;", [xpBonus, roleId]);
             } else {
-                await this.database.execute(`INSERT INTO roles ( role_id, xp_bonus ) VALUES ("${roleId}", ${xpBonus});`);
+                await this.db.query("INSERT INTO roles ( role_id, xp_bonus ) VALUES ($1, $2);", [roleId, xpBonus]);
             }
         } else {
-            await this.database.execute(`DELETE FROM roles WHERE role_id = "${roleId}";`);
+            await this.db.query("DELETE FROM roles WHERE role_id = $1;", [roleId]);
         }
-        await this.database.closeDatabase();
 
-        this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
+        this.roles = await this.loadInit("roles");
     }
 
     /*
@@ -182,22 +161,16 @@ class guildService {
 
     async registerServer(configDetails) {
         await this.createDatabases();
-        
+
         /*
         ---------------------
         POPULATING THE CONFIG
         ---------------------
         */
-        
-        let configInit = "INSERT INTO config ( name, value ) VALUES ";
-        let delimiter = "";
+
         for (const [name, value] of Object.entries(configDetails)) {
-            configInit += `${delimiter}("${name}", "${value}")`;
-            delimiter = ",";
+            await this.db.query("INSERT INTO config ( name, value ) VALUES ($1, $2);", [name, value]);
         }
-        await this.database.openDatabase();
-        this.database.execute(configInit);
-        await this.database.closeDatabase();
 
         /*
         ---------------------
@@ -205,15 +178,9 @@ class guildService {
         ---------------------
         */
 
-        let levelsInit = "INSERT INTO levels ( level, xp_to_next ) VALUES ";
-        delimiter = "";
         for (const [level, xp_to_next] of Object.entries(LEVELS)) {
-            levelsInit += `${delimiter}(${level}, ${xp_to_next})`;
-            delimiter = ",";
+            await this.db.query("INSERT INTO levels ( level, xp_to_next ) VALUES ($1, $2);", [level, xp_to_next]);
         }
-        await this.database.openDatabase();
-        this.database.execute(levelsInit);
-        await this.database.closeDatabase();
 
         /*
         --------------------
@@ -221,10 +188,7 @@ class guildService {
         --------------------
         */
 
-        let rolesInit = `INSERT INTO roles ( role_id, xp_bonus ) VALUES ("${configDetails["xpFreezeRoleId"]}", 0)`;
-        await this.database.openDatabase();
-        this.database.execute(rolesInit);
-        await this.database.closeDatabase();
+        await this.db.query("INSERT INTO roles ( role_id, xp_bonus ) VALUES ($1, 0)", [configDetails["xpFreezeRoleId"]]);
     }
 
     /*
@@ -242,35 +206,25 @@ class guildService {
     }
 
     async createChannelsTable() {
-        await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE channels ( channel_id VARCHAR(100) PRIMARY KEY, xp_per_post NUMBER );");
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("CREATE TABLE channels ( channel_id TEXT PRIMARY KEY, xp_per_post INTEGER );");
+        return res;
     }
     async createCharactersTable() {
-        await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE characters ( character_id STRING PRIMARY KEY , character_index NUMBER, name VARCHAR(100) , sheet_url VARCHAR(100) , picture_url VARCHAR(200) , player_id VARCHAR(100) , xp NUMBER  );");
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("CREATE TABLE characters ( character_id TEXT PRIMARY KEY , character_index INTEGER, name TEXT , sheet_url TEXT , picture_url TEXT , player_id TEXT , xp REAL );");
+        return res;
     }
     async createConfigTable() {
-        await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE config ( name VARCHAR(100) PRIMARY KEY, value VARCHAR(2000) );");
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("CREATE TABLE config ( name TEXT PRIMARY KEY, value VARCHAR(2000) );");
+        return res;
     }
     async createLevelsTable() {
-        await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE levels ( level NUMBER PRIMARY KEY, xp_to_next NUMBER );");
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("CREATE TABLE levels ( level INTEGER PRIMARY KEY, xp_to_next INTEGER );");
+        return res;
     }
     async createRolesTable() {
-        await this.database.openDatabase();
-        const response = await this.database.execute("CREATE TABLE roles ( role_id VARCHAR(100) PRIMARY KEY, xp_bonus NUMBER );");
-        await this.database.closeDatabase();
-        return response;
+        const res = await this.db.query("CREATE TABLE roles ( role_id TEXT PRIMARY KEY, xp_bonus INTEGER );");
+        return res;
     }
 }
 
-module.exports = { guildService }
+module.exports = { guildService };
