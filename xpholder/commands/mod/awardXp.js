@@ -195,7 +195,7 @@ module.exports = {
                 awardEmbed.setFields(
                     { inline: true, name: "Delta", value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**` },
                     { inline: true, name: levelFieldName, value: levelFieldValue },
-                    { inline: true, name: "XP Recieved", value: `${value}` },
+                    { inline: true, name: "XP Received", value: `${value}` },
                     { inline: true, name: "Set By", value: `${interaction.user}` },
                     { inline: false, name: "Progress", value: progressBar },
                 )
@@ -215,7 +215,7 @@ module.exports = {
                 awardEmbed.setFields(
                     { inline: true, name: "Delta", value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**` },
                     { inline: true, name: levelFieldName, value: levelFieldValue },
-                    { inline: true, name: "CXP Recieved", value: `${value}` },
+                    { inline: true, name: "CXP Received", value: `${value}` },
                     { inline: true, name: "Set By", value: `${interaction.user}` },
                     { inline: false, name: "Progress", value: progressBar },
                 )
