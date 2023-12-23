@@ -232,7 +232,7 @@ module.exports = {
             createButtonEvents(guildService, requestMessage, character, (newXp - oldXp), awardChannel, awardEmbed, player)
         }
 
-        await interaction.editReply("Success!");
+        await interaction.editReply("Your XP request has been recieved - you will receive a DM when it is approved.");
     },
 };
 

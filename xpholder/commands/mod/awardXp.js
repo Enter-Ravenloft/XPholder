@@ -191,7 +191,7 @@ module.exports = {
                 )
                 break;
             case "give_xp":
-                awardEmbed.setTitle(`${character["name"]}'s Was Awarded XP`)
+                awardEmbed.setTitle(`${character["name"]} Was Awarded XP`)
                 awardEmbed.setFields(
                     { inline: true, name: "Delta", value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**` },
                     { inline: true, name: levelFieldName, value: levelFieldValue },
@@ -235,8 +235,12 @@ module.exports = {
                     .setStyle("Danger")
             );
 
+        // Recording the action in #xp-holder-ledger
         const awardMessage = await awardChannel.send({ content: `${player}`, embeds: [awardEmbed] , components: [awardButtons] });
-        
+
+        // Notifying the user that they've been awarded XP
+        await player.send({ embeds: [awardEmbed]});
+
         createButtonEvents(guildService, interaction, player, awardMessage, character, oldXp)
 
         await interaction.editReply("Success!");
