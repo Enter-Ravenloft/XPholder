@@ -12,13 +12,14 @@ module.exports = {
 
         .addUserOption(option => option
             .setName("player")
-            .setDescription("The Player Wish To Edit")
+            .setDescription("The Player You Wish To Edit")
             .setRequired(true))
         .addIntegerOption(option => option
             .setName("character")
-            .setDescription("Which Character You Want To Approve ( 1 -> 10 )")
+            .setDescription("Which Character To Award XP To ( 1 -> 10 )")
             .setMinValue(1)
             .setMaxValue(10)
+            .setAutocomplete(true)
             .setRequired(true))
         .addStringOption(option => option
             .setName("award_type")
@@ -244,6 +245,22 @@ module.exports = {
         createButtonEvents(guildService, interaction, player, awardMessage, character, oldXp)
 
         await interaction.editReply("Success!");
+    },
+    async autocomplete(guildService, interaction) {
+        const focusedValue = interaction.options.getFocused();
+
+        const targetUserId = interaction.options.get('player').value;
+        if (!targetUserId) {
+            return;
+        }
+        const characters = await guildService.getAllCharacters(targetUserId);
+        const choices = [];
+        characters.forEach((character) => choices.push([character.name, character.character_index]));
+
+        const filtered = choices.filter(choice => choice[0].toLowerCase().startsWith(focusedValue.toLowerCase()));
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice[0], value: choice[1] })),
+        );
     },
 };
 

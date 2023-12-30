@@ -135,7 +135,6 @@ client.on('interactionCreate', async interaction => {
     */
 
     if (interaction.isAutocomplete()) {
-        console.log("autocomplete");
         try {
             await command.autocomplete(gService, interaction);
         } catch (error) {

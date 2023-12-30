@@ -13,7 +13,7 @@ module.exports = {
 
         .addIntegerOption(option => option
             .setName("character")
-            .setDescription("Which Character You Want To Approve ( 1 -> 10 )")
+            .setDescription("Which Character To Request XP For ( 1 -> 10 )")
             .setMinValue(1)
             .setMaxValue(10)
             .setAutocomplete(true)
