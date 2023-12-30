@@ -16,6 +16,7 @@ module.exports = {
             .setDescription("Which Character You Want To Approve ( 1 -> 10 )")
             .setMinValue(1)
             .setMaxValue(10)
+            .setAutocomplete(true)
             .setRequired(true))
         .addStringOption(option => option
             .setName("award_type")
@@ -161,7 +162,7 @@ module.exports = {
                 awardEmbed.setTitle(`${character["name"]}'s XP Request`)
                 awardEmbed.setFields(
                     { inline: true, name: levelFieldName, value: levelFieldValue },
-                    { inline: true, name: "XP Recieved", value: `${value}` },
+                    { inline: true, name: "XP Received", value: `${value}` },
                     { inline: true, name: "Requested By", value: `${interaction.user}` },
                     { inline: false, name: "Progress", value: progressBar },
                 )
@@ -179,7 +180,7 @@ module.exports = {
                 awardEmbed.setTitle(`${character["name"]}'s CXP Request`)
                 awardEmbed.setFields(
                     { inline: true, name: levelFieldName, value: levelFieldValue },
-                    { inline: true, name: "CXP Recieved", value: `${value}` },
+                    { inline: true, name: "CXP Received", value: `${value}` },
                     { inline: true, name: "Requested By", value: `${interaction.user}` },
                     { inline: false, name: "Progress", value: progressBar },
                 )
@@ -232,7 +233,19 @@ module.exports = {
             createButtonEvents(guildService, requestMessage, character, (newXp - oldXp), awardChannel, awardEmbed, player)
         }
 
-        await interaction.editReply("Your XP request has been recieved - you will receive a DM when it is approved.");
+        await interaction.editReply("Your XP request has been received - you will receive a DM when it is approved.");
+    },
+    async autocomplete(guildService, interaction) {
+        const focusedValue = interaction.options.getFocused();
+
+        const characters = await guildService.getAllCharacters(interaction.user.id);
+        const choices = [];
+        characters.forEach((character) => choices.push([character.name, character.character_index]));
+
+        const filtered = choices.filter(choice => choice[0].toLowerCase().startsWith(focusedValue.toLowerCase()));
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice[0], value: choice[1] })),
+        );
     },
 };
 

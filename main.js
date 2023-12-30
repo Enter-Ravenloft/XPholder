@@ -74,8 +74,14 @@ client.on('interactionCreate', async interaction => {
     -------------------------------------
     */
     
-    if (!interaction.isCommand() ||
-        !interaction.inGuild()) return;
+    if (!interaction.inGuild()) {
+        return;
+    }
+
+    if (!interaction.isCommand() && !interaction.isAutocomplete()) {
+        return;
+    }
+
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
     const guildId = `${interaction.guildId}`;
@@ -102,22 +108,39 @@ client.on('interactionCreate', async interaction => {
     -----------------
     */
 
-    try {
-        logCommand(interaction);
-    } catch (error) {
-        console.log(error);
-    }
-    try {
-        let is_public = !interaction.options.getBoolean("public");
-        await interaction.deferReply({ ephemeral: is_public });
-        await command.execute(gService, interaction);
-    } catch (error) {
+    if (interaction.isCommand()) {
         try {
-            logError(interaction, error);
+            logCommand(interaction);
         } catch (error) {
             console.log(error);
         }
-        console.log(error);
+        try {
+            let is_public = !interaction.options.getBoolean("public");
+            await interaction.deferReply({ ephemeral: is_public });
+            await command.execute(gService, interaction);
+        } catch (error) {
+            try {
+                logError(interaction, error);
+            } catch (error) {
+                console.log(error);
+            }
+            console.log(error);
+        }
+    }
+
+    /*
+    ---------------------
+    HANDLING AUTOCOMPLETE
+    ---------------------
+    */
+
+    if (interaction.isAutocomplete()) {
+        console.log("autocomplete");
+        try {
+            await command.autocomplete(gService, interaction);
+        } catch (error) {
+            console.error(error);
+        }
     }
 });
 
