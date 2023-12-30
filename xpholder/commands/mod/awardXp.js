@@ -249,10 +249,11 @@ module.exports = {
     async autocomplete(guildService, interaction) {
         const focusedValue = interaction.options.getFocused();
 
-        const targetUserId = interaction.options.get('player').value;
-        if (!targetUserId) {
+        if (!interaction.options.get('player')) {
             return;
         }
+
+        const targetUserId = interaction.options.get('player').value;
         const characters = await guildService.getAllCharacters(targetUserId);
         const choices = [];
         characters.forEach((character) => choices.push([character.name, character.character_index]));
