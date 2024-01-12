@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, EmbedBuilder } = require('discord.js');
 
 
-const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_LEVEL_UP_COLOUR, XPHOLDER_RETIRE_COLOUR, XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
+const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_LEVEL_UP_COLOUR } = require("../../config.json");
 const { getLevelInfo, getProgressionBar, awardCXPs } = require("../../utils")
 
 
@@ -18,20 +18,21 @@ module.exports = {
             .setMaxValue(10)
             .setAutocomplete(true)
             .setRequired(true))
-        .addStringOption(option => option
-            .setName("award_type")
-            .setDescription("The Field That You Want To Manage Of A User")
-            .addChoices(
-                { name: "Set Level", value: "set_level" },
-                { name: "Set XP", value: "set_xp" },
-                { name: "Get XP", value: "give_xp" },
-                { name: "Set CXP", value: "set_cxp" },
-                { name: "Get CXP", value: "give_cxp" }
-            )
-            .setRequired(true))
+        // Only 'Get XP' is used by Enter Ravenloft
+        // .addStringOption(option => option
+        //     .setName("award_type")
+        //     .setDescription("The Field That You Want To Manage Of A User")
+        //     .addChoices(
+        //         { name: "Set Level", value: "set_level" },
+        //         { name: "Set XP", value: "set_xp" },
+        //         { name: "Get XP", value: "give_xp" },
+        //         { name: "Set CXP", value: "set_cxp" },
+        //         { name: "Get CXP", value: "give_cxp" }
+        //     )
+        //     .setRequired(true))
         .addIntegerOption(option => option
             .setName("value")
-            .setDescription("The Value For What Is Being Managed")
+            .setDescription("The XP Value Requested")
             .setRequired(true))
         .addStringOption(option => option
             .setName("memo")
@@ -50,7 +51,7 @@ module.exports = {
         --------------
         */
         const characterId = interaction.options.getInteger("character");
-        const awardType = interaction.options.getString("award_type");
+        const awardType = "give_xp"; // interaction.options.getString("award_type");
         const value = interaction.options.getInteger("value");
         let memo = interaction.options.getString("memo");
 
@@ -142,22 +143,22 @@ module.exports = {
         } else { awardEmbed.setColor(XPHOLDER_COLOUR); }
 
         switch (awardType) {
-            case "set_level":
-                awardEmbed.setTitle(`${character["name"]}'s Level Request`)
-                awardEmbed.setFields(
-                    { inline: true, name: "Level", value: newLevelInfo["level"] },
-                    { inline: true, name: "Requested By", value: `${interaction.user}` }
-                )
-                break;
-            case "set_xp":
-                awardEmbed.setTitle(`${character["name"]}'s XP Set Request`)
-                awardEmbed.setFields(
-                    { inline: true, name: "Level", value: newLevelInfo["level"] },
-                    { inline: true, name: "Total XP", value: `${value}` },
-                    { inline: true, name: "Requested By", value: `${interaction.user}` },
-                    { inline: false, name: "Progress", value: progressBar },
-                )
-                break;
+            // case "set_level":
+            //     awardEmbed.setTitle(`${character["name"]}'s Level Request`)
+            //     awardEmbed.setFields(
+            //         { inline: true, name: "Level", value: newLevelInfo["level"] },
+            //         { inline: true, name: "Requested By", value: `${interaction.user}` }
+            //     )
+            //     break;
+            // case "set_xp":
+            //     awardEmbed.setTitle(`${character["name"]}'s XP Set Request`)
+            //     awardEmbed.setFields(
+            //         { inline: true, name: "Level", value: newLevelInfo["level"] },
+            //         { inline: true, name: "Total XP", value: `${value}` },
+            //         { inline: true, name: "Requested By", value: `${interaction.user}` },
+            //         { inline: false, name: "Progress", value: progressBar },
+            //     )
+            //     break;
             case "give_xp":
                 awardEmbed.setTitle(`${character["name"]}'s XP Request`)
                 awardEmbed.setFields(
@@ -165,26 +166,28 @@ module.exports = {
                     { inline: true, name: "XP Received", value: `${value}` },
                     { inline: true, name: "Requested By", value: `${interaction.user}` },
                     { inline: false, name: "Progress", value: progressBar },
+                    { inline: true, name: "Character ID", value: character.character_id },
+                    { inline: true, name: "Player ID", value: interaction.user.id },
                 )
                 break;
-            case "set_cxp":
-                awardEmbed.setTitle(`${character["name"]}'s CXP Set Request`)
-                awardEmbed.setFields(
-                    { inline: true, name: "Level", value: newLevelInfo["level"] },
-                    { inline: true, name: "Total CXP", value: `${value}` },
-                    { inline: true, name: "Requested By", value: `${interaction.user}` },
-                    { inline: false, name: "Progress", value: progressBar },
-                )
-                break;
-            case "give_cxp":
-                awardEmbed.setTitle(`${character["name"]}'s CXP Request`)
-                awardEmbed.setFields(
-                    { inline: true, name: levelFieldName, value: levelFieldValue },
-                    { inline: true, name: "CXP Received", value: `${value}` },
-                    { inline: true, name: "Requested By", value: `${interaction.user}` },
-                    { inline: false, name: "Progress", value: progressBar },
-                )
-                break;
+            // case "set_cxp":
+            //     awardEmbed.setTitle(`${character["name"]}'s CXP Set Request`)
+            //     awardEmbed.setFields(
+            //         { inline: true, name: "Level", value: newLevelInfo["level"] },
+            //         { inline: true, name: "Total CXP", value: `${value}` },
+            //         { inline: true, name: "Requested By", value: `${interaction.user}` },
+            //         { inline: false, name: "Progress", value: progressBar },
+            //     )
+            //     break;
+            // case "give_cxp":
+            //     awardEmbed.setTitle(`${character["name"]}'s CXP Request`)
+            //     awardEmbed.setFields(
+            //         { inline: true, name: levelFieldName, value: levelFieldValue },
+            //         { inline: true, name: "CXP Received", value: `${value}` },
+            //         { inline: true, name: "Requested By", value: `${interaction.user}` },
+            //         { inline: false, name: "Progress", value: progressBar },
+            //     )
+            //     break;
         };
 
         /*
@@ -230,7 +233,6 @@ module.exports = {
 
             //  content: `${player} <@&${guildService.config["moderationRoleId"]}>`,
             const requestMessage = await awardChannel.send({ embeds: [awardEmbed], components: [requestButtons] });
-            createButtonEvents(guildService, requestMessage, character, (newXp - oldXp), awardChannel, awardEmbed, player)
         }
 
         await interaction.editReply("Your XP request has been received - you will receive a DM when it is approved.");
@@ -248,45 +250,3 @@ module.exports = {
         );
     },
 };
-
-function createButtonEvents(guildService, requestMessage, character, deltaXp, collectorChannel, awardEmbed, player) {
-    /*
-    ------------------
-    CREATING COLLECTOR
-    ------------------
-    */
-    const filter = btnInteraction => (
-        ['request_approve', 'request_reject'].includes(btnInteraction.customId) &&
-        requestMessage.id == btnInteraction.message.id &&
-        (
-            btnInteraction.member._roles.includes(guildService.config["moderationRoleId"]) ||
-            btnInteraction.member.id == btnInteraction.member.guild.ownerId
-        )
-
-    );
-    if (!collectorChannel) { return; }
-    const collector = collectorChannel.createMessageComponentCollector({ filter, time: 86_400_000 });
-
-    collector.on('collect', async btnInteraction => {
-        try {
-            switch (btnInteraction.customId) {
-                case "request_approve":
-                    awardEmbed.addFields({ inline: false, name: "Approved By", value: `${btnInteraction.user}` })
-                    awardEmbed.setColor(XPHOLDER_APPROVE_COLOUR)
-
-                    await guildService.updateCharacterXP(character, deltaXp);
-
-                    await btnInteraction.update({ embeds: [awardEmbed], components: [] });
-                    await player.send({ embeds: [awardEmbed]});
-                    break;
-                case "request_reject":
-                    awardEmbed.addFields({ inline: false, name: "Rejected By", value: `${btnInteraction.user}` })
-                    awardEmbed.setColor(XPHOLDER_RETIRE_COLOUR)
-                    await btnInteraction.update({ embeds: [awardEmbed], components: [] });
-                    await player.send({ embeds: [awardEmbed]});
-                    break;
-            }
-            return;
-        } catch (error) { console.log(error) }
-    });
-}

@@ -7,7 +7,7 @@ const { db } = require("./xpholder/database/postgres.js");
 const { guildService } = require("./xpholder/services/guild");
 
 const { getActiveCharacterIndex, getXp, getRoleMultiplier, getLevelInfo, getTier, logCommand, logError } = require("./xpholder/utils");
-const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL } = require("./xpholder/config.json")
+const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, XPHOLDER_RETIRE_COLOUR, XPHOLDER_APPROVE_COLOUR } = require("./xpholder/config.json");
 
 /*
 -----------------------
@@ -78,12 +78,11 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
-    if (!interaction.isCommand() && !interaction.isAutocomplete()) {
+    if (!interaction.isCommand() && !interaction.isAutocomplete() && !interaction.isButton()) {
         return;
     }
 
     const command = client.commands.get(interaction.commandName);
-    if (!command) return;
     const guildId = `${interaction.guildId}`;
 
     // LOADING GUILD SERVICE
@@ -139,6 +138,49 @@ client.on('interactionCreate', async interaction => {
             await command.autocomplete(gService, interaction);
         } catch (error) {
             console.error(error);
+        }
+    }
+
+    /*
+    ---------------------
+    RESPONDING TO BUTTONS
+    ---------------------
+    */
+
+    if (interaction.isButton()) {
+        if (['request_approve', 'request_reject'].includes(interaction.customId) && (
+            interaction.member._roles.includes(gService.config["moderationRoleId"])
+            || interaction.member.id == interaction.member.guild.ownerId
+        )) {
+            // The Approve / Reject buttons for request_xp submissions
+            try {
+                const originalEmbed = interaction.message.embeds[0];
+                const characterId = originalEmbed.fields.filter((field) => field.name === "Character ID")[0].value;
+                const character = { character_id: characterId };
+                const deltaXp = parseInt(originalEmbed.fields.filter((field) => field.name === "XP Received")[0].value);
+                const playerId = originalEmbed.fields.filter((field) => field.name === "Player ID")[0].value;
+                const updatedEmbed = EmbedBuilder.from(originalEmbed);
+
+                switch (interaction.customId) {
+                    case "request_approve":
+                        updatedEmbed.addFields({ inline: false, name: "Approved By", value: `${interaction.user}` })
+                        updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR)
+
+                        await gService.updateCharacterXP(character, deltaXp);
+                        break;
+                    case "request_reject":
+                        updatedEmbed.addFields({ inline: false, name: "Rejected By", value: `${interaction.user}` })
+                        updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
+                        break;
+                }
+
+                await interaction.update({ embeds: [updatedEmbed], components: [] });
+                const player = await client.users.fetch(playerId);
+                await player.send({ embeds: [updatedEmbed]});
+                return;
+            } catch (error) {
+                console.log(error);
+            }
         }
     }
 });
