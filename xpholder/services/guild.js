@@ -164,7 +164,7 @@ class guildService {
     */
 
     async registerServer(configDetails) {
-        await this.db.query(format("CREATE SCHEMA %I;", this.schema));
+        await this.db.query(format("CREATE SCHEMA IF NOT EXISTS %I;", this.schema));
 
         await this.createTables();
 
