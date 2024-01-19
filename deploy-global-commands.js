@@ -5,7 +5,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const { CLIENT_ID, TESTING_SERVER_ID } = require("./xpholder/config.json");
+const { CLIENT_ID } = require("./xpholder/config.json");
 
 const commands = [];
 let commandsPath = [
@@ -28,14 +28,14 @@ const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
 	try {
-		console.log('Started refreshing application (/) commands.');
+		console.log('Started refreshing global application (/) commands.');
 
 		await rest.put(
-			Routes.applicationGuildCommands(CLIENT_ID, TESTING_SERVER_ID),
+			Routes.applicationCommands(CLIENT_ID),
 			{ body: commands },
 		);
 
-		console.log('Successfully reloaded application (/) commands.');
+		console.log('Successfully refreshed global application (/) commands.');
 	} catch (error) {
 		console.log(error);
 	}

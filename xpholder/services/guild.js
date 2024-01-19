@@ -6,6 +6,7 @@ class guildService {
     constructor(database, guildId) {
         this.db = database;
         this.guildId = guildId;
+        this.schema = "guild" + guildId;
 
         this.xpCache = {};
         this.registered = false;
@@ -19,6 +20,10 @@ class guildService {
     */
 
     async init() {
+        // This tells Postgres to run all subsequent commands in this guild's schema, so that multiple
+        // guilds can have independent copies of the tables with their own data.
+        await this.db.query(format("SET search_path TO %I;", this.schema));
+
         if (!await this.isRegistered()) { 
             return;
         }
@@ -47,9 +52,8 @@ class guildService {
         return listOfRoles.includes("1059613628803850261");  // N.B. specific to Enter Raveloft 
     }
 
-    // TODO think about guild multitenancy - different schema per guild?
     async isRegistered() {
-        const res = await this.db.query("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'config');");
+        const res = await this.db.query(format("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = 'config');", this.schema));
         return res.rows[0].exists;
     }
 
@@ -160,7 +164,9 @@ class guildService {
     */
 
     async registerServer(configDetails) {
-        await this.createDatabases();
+        await this.db.query(format("CREATE SCHEMA %I;", this.schema));
+
+        await this.createTables();
 
         /*
         ---------------------
@@ -197,7 +203,7 @@ class guildService {
     ------------------------
     */
 
-    async createDatabases() {
+    async createTables() {
         await this.createChannelsTable();
         await this.createCharactersTable();
         await this.createConfigTable();
