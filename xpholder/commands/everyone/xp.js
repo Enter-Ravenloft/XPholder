@@ -185,8 +185,8 @@ function createButtonEvents(guildService, interaction, player, replyMessage, pla
                     }
                     addRoles.push(await guild.roles.fetch(guildService.config[`tier${newCharacterTier["tier"]}RoleId`]));
 
-                    const updatedPlayer = await player.roles.remove(removeRoles);
-                    await updatedPlayer.roles.add(addRoles);
+                    const updatedPlayer = await player.roles.remove(removeRoles.filter(r => r));
+                    await updatedPlayer.roles.add(addRoles.filter(r => r));
 
                     embedCharacterIndex = pageIndex;
 
@@ -285,8 +285,8 @@ function createButtonEvents(guildService, interaction, player, replyMessage, pla
 
                         copyOfEmbed.setDescription("**RETIRED**")
                         copyOfEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
-                        
-                        await player.roles.remove(removeRoles);
+
+                        await player.roles.remove(removeRoles.filter(r => r));
 
                         await awardChannel.send({ content: `${player}`, embeds: [copyOfEmbed] });
                         await btnInteraction.update({embeds: [copyOfEmbed], components: []});
