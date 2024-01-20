@@ -288,7 +288,7 @@ function createButtonEvents(guildService, interaction, player, replyMessage, pla
                         
                         await player.roles.remove(removeRoles);
 
-                        await awardChannel.send({ content: `${player} <@&${guildService.config["moderationRoleId"]}>`, embeds: [copyOfEmbed] });
+                        await awardChannel.send({ content: `${player}`, embeds: [copyOfEmbed] });
                         await btnInteraction.update({embeds: [copyOfEmbed], components: []});
                     }
                     break;
