@@ -62,7 +62,7 @@ module.exports = {
 
         const guild = interaction.member.guild
         const user = interaction.user;
-#        const player = await guild.members.fetch(user.id);
+//        const player = await guild.members.fetch(user.id);
 
         const character = await guildService.getCharacter(`${player.id}-${characterNumber}`);
 
