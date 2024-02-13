@@ -8,8 +8,8 @@ dotenv.config();
 
 // Real XPHolder bot user ID
 const CLIENT_ID = "1178896106650861618";
-// Enter Ravenloft server ID
-const TESTING_SERVER_ID = "905604470644285460";
+// Sobros server ID
+const TESTING_SERVER_ID = "941842795365302343";
 
 const commands = [];
 let commandsPath = [

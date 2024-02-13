@@ -69,7 +69,7 @@ class guildService {
     }
 
     async getAllCharacters(playerId) {
-        const res = await this.db.query("SELECT * FROM characters WHERE player_id = $1;", [playerId]);
+        const res = await this.db.query("SELECT * FROM characters WHERE player_id = $1 ORDER BY character_index;", [playerId]);
         return res.rows;
     }
 

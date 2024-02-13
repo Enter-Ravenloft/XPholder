@@ -1,10 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, ButtonBuilder, EmbedBuilder } = require('discord.js');
 
-
-const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_LEVEL_UP_COLOUR } = require("../../config.json");
+const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL, XPHOLDER_LEVEL_UP_COLOUR, XPHOLDER_RETIRE_COLOUR, XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
 const { getLevelInfo, getProgressionBar, awardCXPs } = require("../../utils")
-
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -249,4 +247,44 @@ module.exports = {
             filtered.map(choice => ({ name: choice[0], value: choice[1] })),
         );
     },
+    async handleRequestXpCommandButton(guildService, interaction) {
+        if (!interaction.isButton()) {
+            return;
+        }
+
+        if (['request_approve', 'request_reject'].includes(interaction.customId) && (
+            interaction.member._roles.includes(guildService.config["moderationRoleId"])
+            || interaction.member.id == interaction.member.guild.ownerId
+        )) {
+            // The Approve / Reject buttons for request_xp submissions
+            try {
+                const originalEmbed = interaction.message.embeds[0];
+                const characterId = originalEmbed.fields.filter((field) => field.name === "Character ID")[0].value;
+                const character = { character_id: characterId };
+                const deltaXp = parseInt(originalEmbed.fields.filter((field) => field.name === "XP Received")[0].value);
+                const playerId = originalEmbed.fields.filter((field) => field.name === "Player ID")[0].value;
+                const updatedEmbed = EmbedBuilder.from(originalEmbed);
+
+                switch (interaction.customId) {
+                    case "request_approve":
+                        updatedEmbed.addFields({ inline: false, name: "Approved By", value: `${interaction.user}` })
+                        updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR)
+
+                        await guildService.updateCharacterXP(character, deltaXp);
+                        break;
+                    case "request_reject":
+                        updatedEmbed.addFields({ inline: false, name: "Rejected By", value: `${interaction.user}` })
+                        updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
+                        break;
+                }
+
+                await interaction.update({ embeds: [updatedEmbed], components: [] });
+                const player = await interaction.member.guild.members.fetch(playerId);
+                await player.send({ embeds: [updatedEmbed]});
+                return;
+            } catch (error) {
+                console.log(error);
+            }
+        }
+    }
 };

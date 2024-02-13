@@ -89,7 +89,7 @@ function listOfObjsToObj(listOfObjs, key, value) {
 GETTERS
 -------
 */
-function getActiveCharacterIndex(serverConfig, userRoles) {
+function getActiveCharacterNumber(serverConfig, userRoles) {
     /*
     Parameters
     ----------
@@ -310,7 +310,10 @@ function buildCharacterEmbed(guildService, player, characterObj) {
             { inline: true, name: "Current Level XP", value: `${Math.floor(levelInfo["levelXp"])}` },
             { inline: true, name: "Next Level XP", value: `${Math.floor(levelInfo["xpToNext"])}` },
 
-            { inline: false, name: `Progress`, value: `${progress}` }
+            { inline: false, name: `Progress`, value: `${progress}` },
+
+            { inline: true, name: "Player ID", value: `${player.id}` },
+            { inline: true, name: "Character No.", value: `${characterObj["character_index"]}` }
         )
         .setFooter({ text: `Dont Like What You See? Try /edit_character (${characterObj["character_index"]}/${guildService.config["characterCount"]})` })
         .setColor(XPHOLDER_COLOUR);
@@ -438,7 +441,7 @@ function sqlInjectionCheck(myString) {
 
 module.exports = {
     awardCXPs,
-    getActiveCharacterIndex,
+    getActiveCharacterNumber,
     getLevelInfo,
     getRoleMultiplier,
     getTier,
