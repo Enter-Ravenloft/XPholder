@@ -50,6 +50,9 @@ module.exports = {
             await interaction.editReply(`Sorry, ${player} has no active characters.`);
             return;
         }
+        if (embedCharacterIndex >= characterEmbeds.length) {
+            embedCharacterIndex = characterEmbeds.length-1;
+        }
 
         /*
         ----------------
