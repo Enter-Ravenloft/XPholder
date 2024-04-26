@@ -50,6 +50,9 @@ module.exports = {
             await interaction.editReply(`Sorry, ${player} has no active characters.`);
             return;
         }
+        if (embedCharacterIndex >= characterEmbeds.length) {
+            embedCharacterIndex = characterEmbeds.length-1;
+        }
 
         /*
         ----------------
@@ -104,9 +107,17 @@ module.exports = {
 
         let retire = originalEmbed.description && originalEmbed.description.includes("**WARNING:** Are you sure you want to retire?");
 
-        let pageIndex = embedCharacterNumber - 1;
-
         let characterEmbeds = await buildCharacterEmbeds(guildService, player);
+
+        // pageIndex depends on the character_index, if not found, default to 0
+        let pageIndex = 0;
+        let index = 0;
+        for (let character of characterEmbeds) {
+            if (character["character_index"] == embedCharacterNumber) {
+                pageIndex = index;
+            }
+            index += 1;
+        }
 
         try {
             let removeRoles = [];
