@@ -112,7 +112,7 @@ module.exports = {
         // pageIndex depends on the character_index, if not found, default to 0
         let pageIndex = 0;
         let index = 0;
-        for (let character of characterEmbeds) {
+        for (let character of playerCharacters) {
             if (character["character_index"] == embedCharacterNumber) {
                 pageIndex = index;
             }
