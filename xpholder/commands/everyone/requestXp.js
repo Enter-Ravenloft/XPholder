@@ -280,7 +280,12 @@ module.exports = {
 
                 await interaction.update({ embeds: [updatedEmbed], components: [] });
                 const player = await interaction.member.guild.members.fetch(playerId);
-                await player.send({ embeds: [updatedEmbed]});
+                try {
+                    await player.send({ embeds: [updatedEmbed]});
+                } catch (error) {
+                    // This can happen if the user has DMs disabled - send() will throw a Forbidden exception.
+                    console.log(error);
+                }
                 return;
             } catch (error) {
                 console.log(error);

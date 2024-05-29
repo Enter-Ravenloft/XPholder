@@ -240,9 +240,15 @@ module.exports = {
         const awardMessage = await awardChannel.send({ content: `${player}`, embeds: [awardEmbed] , components: [awardButtons] });
 
         // Notifying the user that they've been awarded XP
-        await player.send({ embeds: [awardEmbed]});
-
-        createButtonEvents(guildService, interaction, player, awardMessage, character, oldXp)
+        try {
+            await player.send({ embeds: [awardEmbed]});
+            await interaction.editReply("Success!");
+        } catch (error) {
+            console.log(error);
+            await interaction.editReply("XP awareded, but user could not be notified via DM.");
+        } finally {
+            createButtonEvents(guildService, interaction, player, awardMessage, character, oldXp);
+        }
 
         await interaction.editReply("Success!");
     },
