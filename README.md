@@ -32,6 +32,7 @@ attach files
 ### Requirements
 
 - node
+- PostgreSQL
 
 ### Setup
 
