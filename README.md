@@ -53,10 +53,12 @@ NODE_ENV=test
 PGUSER=
 # Postgres Password: This is used to form the Postgres connection string
 PGPASSWORD=
-# Server that the postgres DB is hosted at
+# Server that the postgres DB is hosted at: This will be used to form the connection string
 DB_SERVER=
-# Port that is used to access the DB
+# Port that is used to access the DB: This will be used to form the connection string
 DB_PORT=
+# Name of the database that will be connected to:  This will be used to form the connection string. If it is left undefined, the connection will fall back to the default database name that postgres provides
+DB_NAME=
 # Bot Token: this is provided by the discord developer portal when a bot is created
 DISCORD_TOKEN=
 # Test Bot Token: this is provided by the discord developer portal when a bot is created
