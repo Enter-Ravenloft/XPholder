@@ -3,7 +3,7 @@ const { sqlInjectionCheck, buildCharacterEmbed } = require("../../utils");
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('edit__other_character')
+        .setName('edit_other_character')
         .setDescription('Edit Another Player\'s Character [MOD]')
         .addUserOption(option => option
             .setName("player")
@@ -14,7 +14,6 @@ module.exports = {
             .setDescription("Which Character You Want To Edit ( 1 -> 10 )")
             .setMinValue(1)
             .setMaxValue(10)
-            .setAutocomplete(true)
             .setRequired(true))
         .addStringOption(option => option
             .setName("character_name")
@@ -54,7 +53,9 @@ module.exports = {
         INITALIZATIONS
         --------------
         */
-        const player = interaction.options.getUser("player");
+        const player = await guild.members.fetch(
+              interaction.options.getUser("player").id
+            );
         const characterNumber = interaction.options.getInteger("character");
         const name = interaction.options.getString("character_name");
         const sheetUrl = interaction.options.getString("sheet_url");
