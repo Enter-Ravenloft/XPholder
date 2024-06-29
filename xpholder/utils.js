@@ -531,6 +531,26 @@ function sqlInjectionCheck(myString) {
   );
 }
 
+function isAuthorizedRole(guildService, interaction, XPHolderRole) {
+  switch (XPHolderRole) {
+    case "everyone":
+      return true;
+    case "mod":
+      if (guildService.isMod(interaction.member._roles)) {
+        return true;
+      }
+    case "owner":
+      if (interaction.user.id === interaction.guild.ownerId) {
+        return true;
+      }
+    default:
+      return (
+        guildService.isDev(interaction.member._roles) &&
+        process.env.NODE_ENV === "test"
+      );
+  }
+}
+
 module.exports = {
   awardCXPs,
   getActiveCharacterNumber,
@@ -547,4 +567,5 @@ module.exports = {
   logCommand,
   logError,
   listOfObjsToObj,
+  isAuthorizedRole,
 };
