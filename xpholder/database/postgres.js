@@ -1,7 +1,6 @@
 const { Pool } = require("pg");
 
 const pool = (() => {
-  const dbName = process.env.DB_NAME || "postgres";
   const connectionString = process.env.DATABASE_URL;
   if (process.env.NODE_ENV !== "production") {
     return new Pool({
