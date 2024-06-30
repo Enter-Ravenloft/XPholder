@@ -4,7 +4,7 @@ const { logError } = require("../../utils");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("temp_update_registration")
+    .setName("apply_registration_update")
     .setDescription(
       "Creates tables that may not have existed from the original registration"
     )
@@ -33,7 +33,7 @@ module.exports = {
     }
     await interaction.editReply("Creating Additional Tables!");
     try {
-      await guildService.tempUpdateRegistration();
+      await guildService.updateRegistration();
     } catch (err) {
       await logError(interaction, err);
       return;
