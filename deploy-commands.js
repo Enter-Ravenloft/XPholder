@@ -5,8 +5,11 @@ const fs = require("fs");
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Real XPHolder bot user ID
 const CLIENT_ID = process.env.CLIENT_ID;
-
+// Sobros server ID
+const TESTING_SERVER_ID = process.env.TESTING_SERVER_ID;
+console.log(`Deploying commands to ${process.env.NODE_ENV}`);
 const commands = [];
 let commandsPath = ["everyone", "owner", "mod"];
 let commandCollection = [];
@@ -22,17 +25,17 @@ for (const path of commandsPath) {
   }
 }
 
-const rest = new REST({ version: "9" }).setToken(
-  process.env.DISCORD_TOKEN_PROD
-);
+const rest = new REST({ version: "9" }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log("Started refreshing global application (/) commands.");
+    console.log("Started refreshing application (/) commands.");
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, TESTING_SERVER_ID),
+      { body: commands }
+    );
 
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-
-    console.log("Successfully refreshed global application (/) commands.");
+    console.log("Successfully reloaded application (/) commands.");
   } catch (error) {
     console.log(error);
   }
