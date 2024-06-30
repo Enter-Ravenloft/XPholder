@@ -22,12 +22,11 @@ module.exports = {
         ----------
         */
     if (
-      !guildService.isMod(interaction.member._roles) &&
       interaction.user.id != interaction.guild.ownerId &&
       !guildService.isDev(interaction.member._roles)
     ) {
       await interaction.editReply(
-        "Sorry, you do not have the right role to use this command."
+        "Sorry, but you are not the owner of the server, and can not use this command."
       );
       return;
     }
