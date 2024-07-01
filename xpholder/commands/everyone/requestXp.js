@@ -9,7 +9,15 @@ const {
   XPHOLDER_RETIRE_COLOUR,
   XPHOLDER_APPROVE_COLOUR,
 } = require("../../config.json");
-const { getLevelInfo, getProgressionBar, awardCXPs } = require("../../utils");
+const {
+  getLevelInfo,
+  getProgressionBar,
+  calculateXp,
+  buildXPEmbed,
+  setCharacterXP,
+  updateCharacterXP,
+  getEmbedLevelSettings,
+} = require("../../utils");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -63,7 +71,7 @@ module.exports = {
         --------------
         */
     const characterId = interaction.options.getInteger("character");
-    const awardType = "give_xp"; // interaction.options.getString("award_type");
+    const awardType = "give_xp";
     const value = interaction.options.getInteger("value");
     let memo = interaction.options.getString("memo");
 
@@ -102,38 +110,12 @@ module.exports = {
     const oldXp = character["xp"];
     const oldLevelInfo = getLevelInfo(guildService.levels, oldXp);
 
-    /*
-        ------------
-        XP ALGORITHM
-        ------------
-        */
-    switch (awardType) {
-      case "set_level":
-        let newXp = 0;
-        for (const [level, xp] of Object.entries(guildService.levels)) {
-          if (parseInt(level) < value) {
-            newXp += xp;
-          }
-        }
-        character["xp"] = newXp;
-        break;
-      case "set_xp":
-        character["xp"] = value;
-        break;
-      case "give_xp":
-        character["xp"] += value;
-        break;
-      case "set_cxp":
-        character["xp"] = awardCXPs(0, value, guildService.levels);
-        break;
-      case "give_cxp":
-        character["xp"] = awardCXPs(
-          character["xp"],
-          value,
-          guildService.levels
-        );
-        break;
-    }
+    character["xp"] = calculateXp(
+      awardType,
+      character,
+      guildService.levels,
+      value
+    );
 
     /*
         -------------
@@ -154,76 +136,21 @@ module.exports = {
     }
 
     // embed inits
-    let awardEmbed = new EmbedBuilder()
-      .setDescription(memo)
-      .setFooter({
-        text: `Like the bot? Click the title to visit the dev server!`,
-      })
-      .setThumbnail(
-        character["picture_url"] != "" && character["picture_url"] !== "null"
-          ? character["picture_url"]
-          : XPHOLDER_ICON_URL
-      )
-      .setURL(DEV_SERVER_URL);
 
-    let levelFieldName = "Level";
-    let levelFieldValue = newLevelInfo["level"];
-    // determining if the player is a different level than before
-    if (oldLevelInfo["level"] != newLevelInfo["level"]) {
-      levelFieldName = "Level Up!";
-      levelFieldValue = `${oldLevelInfo["level"]} --> **${newLevelInfo["level"]}**`;
-      awardEmbed.setColor(XPHOLDER_LEVEL_UP_COLOUR);
-    } else {
-      awardEmbed.setColor(XPHOLDER_COLOUR);
-    }
-
-    switch (awardType) {
-      // case "set_level":
-      //     awardEmbed.setTitle(`${character["name"]}'s Level Request`)
-      //     awardEmbed.setFields(
-      //         { inline: true, name: "Level", value: newLevelInfo["level"] },
-      //         { inline: true, name: "Requested By", value: `${interaction.user}` }
-      //     )
-      //     break;
-      // case "set_xp":
-      //     awardEmbed.setTitle(`${character["name"]}'s XP Set Request`)
-      //     awardEmbed.setFields(
-      //         { inline: true, name: "Level", value: newLevelInfo["level"] },
-      //         { inline: true, name: "Total XP", value: `${value}` },
-      //         { inline: true, name: "Requested By", value: `${interaction.user}` },
-      //         { inline: false, name: "Progress", value: progressBar },
-      //     )
-      //     break;
-      case "give_xp":
-        awardEmbed.setTitle(`${character["name"]}'s XP Request`);
-        awardEmbed.setFields(
-          { inline: true, name: levelFieldName, value: levelFieldValue },
-          { inline: true, name: "XP Received", value: `${value}` },
-          { inline: true, name: "Requested By", value: `${interaction.user}` },
-          { inline: false, name: "Progress", value: progressBar },
-          { inline: true, name: "Character ID", value: character.character_id },
-          { inline: true, name: "Player ID", value: interaction.user.id }
-        );
-        break;
-      // case "set_cxp":
-      //     awardEmbed.setTitle(`${character["name"]}'s CXP Set Request`)
-      //     awardEmbed.setFields(
-      //         { inline: true, name: "Level", value: newLevelInfo["level"] },
-      //         { inline: true, name: "Total CXP", value: `${value}` },
-      //         { inline: true, name: "Requested By", value: `${interaction.user}` },
-      //         { inline: false, name: "Progress", value: progressBar },
-      //     )
-      //     break;
-      // case "give_cxp":
-      //     awardEmbed.setTitle(`${character["name"]}'s CXP Request`)
-      //     awardEmbed.setFields(
-      //         { inline: true, name: levelFieldName, value: levelFieldValue },
-      //         { inline: true, name: "CXP Received", value: `${value}` },
-      //         { inline: true, name: "Requested By", value: `${interaction.user}` },
-      //         { inline: false, name: "Progress", value: progressBar },
-      //     )
-      //     break;
-    }
+    const title = `${character["name"]}'s XP Request`;
+    let { levelField, color } = getEmbedLevelSettings(
+      newLevelInfo,
+      oldLevelInfo
+    );
+    const fields = [
+      levelField,
+      { inline: true, name: "XP Received", value: `${value}` },
+      { inline: true, name: "Requested By", value: `${interaction.user}` },
+      { inline: false, name: "Progress", value: progressBar },
+      { inline: true, name: "Character ID", value: character.character_id },
+      { inline: true, name: "Player ID", value: interaction.user.id },
+    ];
+    const awardEmbed = buildXPEmbed(title, character, fields, color, memo);
 
     /*
         ---------------
@@ -235,27 +162,7 @@ module.exports = {
         content: `${player} <@&${guildService.config["moderationRoleId"]}>`,
         embeds: [awardEmbed],
       });
-      /*
-            ----------------
-            UPDATE CHARACTER
-            ----------------
-            character - schema :
-                character_id   : STRING
-                character_index: NUMBER
-                name           : STRING
-                sheet_url      : STRING
-                picture_url    : STRING
-                player_id      : STRING
-                xp             : NUMBER
-            */
-      const characterSchema = {
-        character_id: character["character_id"],
-        character_index: character["character_index"],
-        player_id: character["player_id"],
-        xp: character["xp"],
-      };
-
-      await guildService.setCharacterXP(characterSchema);
+      await setCharacterXP(player, character, guildService);
     } else {
       const requestButtons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -268,8 +175,7 @@ module.exports = {
           .setStyle("Danger")
       );
 
-      //  content: `${player} <@&${guildService.config["moderationRoleId"]}>`,
-      const requestMessage = await awardChannel.send({
+      await awardChannel.send({
         embeds: [awardEmbed],
         components: [requestButtons],
       });
@@ -310,6 +216,7 @@ module.exports = {
       // The Approve / Reject buttons for request_xp submissions
       try {
         const originalEmbed = interaction.message.embeds[0];
+
         const characterId = originalEmbed.fields.filter(
           (field) => field.name === "Character ID"
         )[0].value;
@@ -322,6 +229,7 @@ module.exports = {
         const playerId = originalEmbed.fields.filter(
           (field) => field.name === "Player ID"
         )[0].value;
+        const player = await interaction.guild.members.fetch(playerId);
         const updatedEmbed = EmbedBuilder.from(originalEmbed);
 
         switch (interaction.customId) {
@@ -332,8 +240,7 @@ module.exports = {
               value: `${interaction.user}`,
             });
             updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
-
-            await guildService.updateCharacterXP(character, deltaXp);
+            await updateCharacterXP(player, character, deltaXp, guildService);
             break;
           case "request_reject":
             updatedEmbed.addFields({
@@ -346,7 +253,6 @@ module.exports = {
         }
 
         await interaction.update({ embeds: [updatedEmbed], components: [] });
-        const player = await interaction.member.guild.members.fetch(playerId);
         try {
           await player.send({ embeds: [updatedEmbed] });
         } catch (error) {

@@ -1,5 +1,11 @@
 const { EmbedBuilder } = require("discord.js");
 const { getLevelInfo, getRoleMultiplier, getTier } = require("./getters");
+const {
+  DEV_SERVER_URL,
+  XPHOLDER_ICON_URL,
+  XPHOLDER_COLOUR,
+  XPHOLDER_LEVEL_UP_COLOUR,
+} = require("../config.json");
 function buildCharacterEmbed(guildService, player, characterObj) {
   /*
       Parameters
@@ -121,8 +127,50 @@ function getProgressionBar(xp, xpToNext) {
 
   return progressMessage;
 }
+function getEmbedLevelSettings(newLevelInfo, oldLevelInfo) {
+  let levelFieldName = "Level";
+  let levelFieldValue = newLevelInfo["level"];
+  let color = XPHOLDER_COLOUR;
+  // determining if the player is a different level than before
+  if (oldLevelInfo["level"] != newLevelInfo["level"]) {
+    levelFieldName = "Level Up!";
+    levelFieldValue = `${oldLevelInfo["level"]} --> **${newLevelInfo["level"]}**`;
+    color = XPHOLDER_LEVEL_UP_COLOUR;
+  }
+  return {
+    levelField: { inline: true, name: levelFieldName, value: levelFieldValue },
+    color,
+  };
+}
+function buildXPEmbed(
+  title = "",
+  character = {},
+  fields = [],
+  color = "",
+  memo = ""
+) {
+  const awardEmbed = new EmbedBuilder()
+    .setDescription(memo)
+    .setFooter({
+      text: `Like the bot? Click the title to visit the dev server!`,
+    })
+    .setThumbnail(
+      character["picture_url"] != "" && character["picture_url"] !== "null"
+        ? character["picture_url"]
+        : XPHOLDER_ICON_URL
+    )
+    .setURL(DEV_SERVER_URL);
+  awardEmbed.setTitle(title);
+  awardEmbed.setFields(...fields);
+  if (color) {
+    awardEmbed.setColor;
+  }
+  return awardEmbed;
+}
 
 module.exports = {
   buildCharacterEmbed,
+  buildXPEmbed,
+  getEmbedLevelSettings,
   getProgressionBar,
 };
