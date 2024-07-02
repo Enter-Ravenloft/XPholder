@@ -35,6 +35,7 @@ class guildService {
       "channel_id",
       "xp_per_post"
     );
+    this.characterTiers = await this.fetchCharacterTiers();
   }
 
   async loadInit(table, primaryKey, value) {
@@ -57,13 +58,8 @@ class guildService {
   }
 
   async isRegistered() {
-    const res = await this.db.query(
-      format(
-        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = 'config');",
-        this.schema
-      )
-    );
-    return res.rows[0].exists;
+    const res = await this.tableExists("config");
+    return res;
   }
   async isQuestManagementEnabled() {
     const res = await this.db.query(
@@ -84,6 +80,17 @@ class guildService {
     return res.rows[0].exists;
   }
 
+  async tableExists(tableName) {
+    const res = await this.db.query(
+      format(
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = '%I');",
+        this.schema,
+        tableName
+      )
+    );
+    return res.rows[0].exists;
+  }
+
   /*
     ---------
     CHARACTER
@@ -92,7 +99,7 @@ class guildService {
 
   async deleteCharacter(character) {
     const res = await this.db.query(
-      "DELETE FROM characters WHERE character_id = $1;",
+      `DELETE FROM ${this.schema}.characters WHERE character_id = $1;`,
       [character["character_id"]]
     );
     return res;
@@ -100,20 +107,20 @@ class guildService {
 
   async getAllCharacters(playerId) {
     const res = await this.db.query(
-      "SELECT * FROM characters WHERE player_id = $1 ORDER BY character_index;",
+      `SELECT * FROM ${this.schema}.characters WHERE player_id = $1 ORDER BY character_index;`,
       [playerId]
     );
     return res.rows;
   }
 
   async getAllGuildCharacters() {
-    const res = await this.db.query("SELECT * FROM characters;");
+    const res = await this.db.query(`SELECT * FROM ${this.schema}.characters;`);
     return res.rows;
   }
 
   async getCharacter(characterId) {
     const res = await this.db.query(
-      "SELECT * FROM characters WHERE character_id = $1;",
+      `SELECT * FROM ${this.schema}.characters WHERE character_id = $1;`,
       [characterId]
     );
     return res.rows.length == 0 ? null : res.rows[0];
@@ -121,7 +128,7 @@ class guildService {
 
   async insertCharacter(character) {
     const res = await this.db.query(
-      "INSERT INTO characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp) VALUES ( $1, $2, $3, $4, $5, $6, $7 );",
+      `INSERT INTO ${this.schema}.characters (character_id, character_index, name, sheet_url, picture_url, player_id, xp) VALUES ( $1, $2, $3, $4, $5, $6, $7 );`,
       [
         character.character_id,
         character.character_index,
@@ -137,7 +144,7 @@ class guildService {
 
   async updateCharacterInfo(character) {
     const res = await this.db.query(
-      "UPDATE characters SET name = $1, sheet_url = $2, picture_url = $3 WHERE character_id = $4;",
+      `UPDATE ${this.schema}.characters SET name = $1, sheet_url = $2, picture_url = $3 WHERE character_id = $4;`,
       [
         character.name,
         character.sheet_url,
@@ -149,14 +156,14 @@ class guildService {
   }
   async updateCharacterXP(character, deltaXp) {
     const res = await this.db.query(
-      "UPDATE characters SET xp = xp + $1 WHERE character_id = $2;",
+      `UPDATE ${this.schema}.characters SET xp = xp + $1 WHERE character_id = $2;`,
       [deltaXp, character.character_id]
     );
     return res;
   }
   async setCharacterXP(character) {
     const res = await this.db.query(
-      "UPDATE characters SET xp = $1 WHERE character_id = $2;",
+      `UPDATE ${this.schema}.characters SET xp = $1 WHERE character_id = $2;`,
       [character.xp, character.character_id]
     );
     return res;
@@ -170,10 +177,10 @@ class guildService {
 
   async updateConfig(config) {
     for (const [name, value] of Object.entries(config)) {
-      await this.db.query("UPDATE config SET value = $1 WHERE name = $2;", [
-        value,
-        name,
-      ]);
+      await this.db.query(
+        `UPDATE ${this.schema}.config SET value = $1 WHERE name = $2;`,
+        [value, name]
+      );
     }
 
     this.config = await this.loadInit("config");
@@ -184,29 +191,30 @@ class guildService {
     if (xpPerPost >= 0) {
       if (channelId in this.channels) {
         await this.db.query(
-          "UPDATE channels SET xp_per_post = $1 WHERE channel_id = $2;",
+          `UPDATE ${this.schema}.channels SET xp_per_post = $1 WHERE channel_id = $2;`,
           [xpPerPost, channelId]
         );
       } else {
         await this.db.query(
-          "INSERT INTO channels ( channel_id, xp_per_post ) VALUES ($1, $2);",
+          `INSERT INTO ${this.schema}.channels ( channel_id, xp_per_post ) VALUES ($1, $2);`,
           [channelId, xpPerPost]
         );
       }
     } else {
-      await this.db.query("DELETE FROM channels WHERE channel_id = $1;", [
-        channelId,
-      ]);
+      await this.db.query(
+        `DELETE FROM ${this.schema}.channels WHERE channel_id = $1;`,
+        [channelId]
+      );
     }
 
     this.channels = await this.loadInit("channels");
   }
 
   async updateLevel(level, xpToNext) {
-    await this.db.query("UPDATE levels SET xp_to_next = $1 WHERE level = $2;", [
-      xpToNext,
-      level,
-    ]);
+    await this.db.query(
+      `UPDATE ${this.schema}.levels SET xp_to_next = $1 WHERE level = $2;`,
+      [xpToNext, level]
+    );
 
     this.levels = await this.loadInit("levels", "level", "xp_to_next");
   }
@@ -216,20 +224,92 @@ class guildService {
     if (xpBonus >= 0) {
       if (roleId in this.roles) {
         await this.db.query(
-          "UPDATE roles SET xp_bonus = $1 WHERE role_id = $2;",
+          `UPDATE ${this.schema}.roles SET xp_bonus = $1 WHERE role_id = $2;`,
           [xpBonus, roleId]
         );
       } else {
         await this.db.query(
-          "INSERT INTO roles ( role_id, xp_bonus ) VALUES ($1, $2);",
+          `INSERT INTO ${this.schema}.roles ( role_id, xp_bonus ) VALUES ($1, $2);`,
           [roleId, xpBonus]
         );
       }
     } else {
-      await this.db.query("DELETE FROM roles WHERE role_id = $1;", [roleId]);
+      await this.db.query(
+        `DELETE FROM ${this.schema}.roles WHERE role_id = $1;`,
+        [roleId]
+      );
     }
 
     this.roles = await this.loadInit("roles");
+  }
+
+  async updateCharacterTier(
+    roleId,
+    xpBonus,
+    minimumLevel = 0,
+    maximumLevel = 0
+  ) {
+    if (xpBonus >= 0) {
+      const existingTier = this.characterTiers.find(
+        (tier) => tier["role_id"] === roleId
+      );
+      if (existingTier) {
+        const tierMinimum =
+          minimumLevel > 0 ? minimumLevel : existingTier["minimum_level"];
+        const tierMaximum =
+          maximumLevel >= tierMinimum
+            ? maximumLevel
+            : existingTier["maximum_level"] >= tierMinimum
+            ? existingTier["maximum_level"]
+            : tierMinimum;
+
+        await this.db.query(
+          `
+            UPDATE 
+                ${this.schema}.character_tiers
+            SET 
+                minimum_level = $1,
+                maximum_level = $2,
+                xp_bonus = $3
+            WHERE 
+                role_id = $4;   
+        `,
+          [tierMinimum, tierMaximum, xpBonus, roleId]
+        );
+      } else {
+        const tierMinimum = minimumLevel > 0 ? minimumLevel : 1;
+        const tierMaximum =
+          maximumLevel > tierMinimum ? maximumLevel : tierMinimum;
+        await this.db.query(
+          `
+              INSERT INTO
+                ${this.schema}.character_tiers
+                (
+                    minimum_level,
+                    maximum_level,
+                    xp_bonus,
+                    role_id
+                )
+                VALUES(
+                    $1,
+                    $2,
+                    $3,
+                    $4
+                );
+          `,
+          [tierMinimum, tierMaximum, xpBonus, roleId]
+        );
+      }
+    } else {
+      await this.db.query(
+        `
+            DELETE FROM ${this.schema}.character_tiers
+            WHERE role_id = $1
+            `,
+        [roleId]
+      );
+    }
+    this.characterTiers = await this.fetchCharacterTiers();
   }
 
   /*
@@ -251,7 +331,7 @@ class guildService {
 
     for (const [name, value] of Object.entries(configDetails)) {
       await this.db.query(
-        "INSERT INTO config ( name, value ) VALUES ($1, $2);",
+        `INSERT INTO ${this.schema}.config ( name, value ) VALUES ($1, $2);`,
         [name, value]
       );
     }
@@ -264,7 +344,7 @@ class guildService {
 
     for (const [level, xp_to_next] of Object.entries(LEVELS)) {
       await this.db.query(
-        "INSERT INTO levels ( level, xp_to_next ) VALUES ($1, $2);",
+        `INSERT INTO ${this.schema}.levels ( level, xp_to_next ) VALUES ($1, $2);`,
         [level, xp_to_next]
       );
     }
@@ -276,9 +356,18 @@ class guildService {
         */
 
     await this.db.query(
-      "INSERT INTO roles ( role_id, xp_bonus ) VALUES ($1, 0)",
+      `INSERT INTO ${this.schema}.roles ( role_id, xp_bonus ) VALUES ($1, 0)`,
       [configDetails["xpFreezeRoleId"]]
     );
+  }
+
+  async updateRegistration() {
+    const doesCharacterTiersTableExist = await this.tableExists(
+      "character_tiers"
+    );
+    if (!doesCharacterTiersTableExist) {
+      await this.createCharacterTiersTable();
+    }
   }
 
   /*
@@ -293,6 +382,7 @@ class guildService {
     await this.createConfigTable();
     await this.createLevelsTable();
     await this.createRolesTable();
+    await this.createCharacterTiersTable();
   }
 
   async createChannelsTable() {
@@ -391,6 +481,44 @@ class guildService {
         );`
     );
     return res;
+  }
+  async createCharacterTiersTable() {
+    const res = await this.db.query(
+      `CREATE TABLE 
+        character_tiers ( 
+            tier_id SERIAL PRIMARY KEY,
+            role_id TEXT NOT NULL, 
+            minimum_level INTEGER NOT NULL,
+            maximum_level INTEGER NOT NULL,
+            xp_bonus INTEGER NOT NULL
+        );`
+    );
+    return res;
+  }
+  /*
+  ------------------------
+  FETCH TABLE FUNCTIONS
+  ------------------------
+  */
+  async fetchCharacterTiers() {
+    const doesCharacterTiersTableExist = await this.tableExists(
+      "character_tiers"
+    );
+    if (doesCharacterTiersTableExist) {
+      const table = await this.db.query(
+        format(`
+            SELECT 
+                tier_id,
+                role_id,
+                minimum_level,
+                maximum_level,
+                xp_bonus
+            FROM
+                ${this.schema}.character_tiers;`)
+      );
+      return table.rows;
+    }
+    return [];
   }
 }
 
