@@ -22,9 +22,8 @@ for (const path of commandsPath) {
   }
 }
 
-const rest = new REST({ version: "9" }).setToken(
-  process.env.DISCORD_TOKEN_PROD
-);
+const rest = new REST({ version: "9" })
+  .setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {

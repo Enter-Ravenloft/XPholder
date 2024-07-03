@@ -55,8 +55,6 @@ DATABASE_URL=
 DB_NAME=
 # Bot Token: this is provided by the discord developer portal when a bot is created
 DISCORD_TOKEN=
-# Test Bot Token: this is provided by the discord developer portal when a bot is created
-DISCORD_TOKEN_TEST=
 
 # Client ID of bot
 CLIENT_ID=
