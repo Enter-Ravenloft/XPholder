@@ -62,22 +62,13 @@ class guildService {
     return res;
   }
   async isQuestManagementEnabled() {
-    const res = await this.db.query(
-      format(
-        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = 'quest_meta' );",
-        this.schema
-      )
-    );
-    return res.rows[0].exists;
+    const res = await this.tableExists("quest_meta");
+
+    return res;
   }
   async isChannelCharactersEnabled() {
-    const res = await this.db.query(
-      format(
-        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = 'channel_character' );",
-        this.schema
-      )
-    );
-    return res.rows[0].exists;
+    const res = await this.tableExists("channel_character");
+    return res;
   }
 
   async tableExists(tableName) {
@@ -428,6 +419,8 @@ class guildService {
     await this.createQuestTypesTable();
     await this.createQuestStatusTable();
     await this.createQuestMetaTable();
+    await this.createQuestCharacterTable();
+    await this.createQuestManagerConfigTable();
   }
 
   async createChannelCharactersTable() {
@@ -448,7 +441,8 @@ class guildService {
         quest_types ( 
             type_id SERIAL PRIMARY KEY, 
             type_name TEXT NOT NULL, 
-            type_description TEXT NOT NULL
+            type_description TEXT NOT NULL,
+            is_deleted BOOLEAN DEFAULT FALSE
         );`
     );
     return res;
@@ -459,14 +453,14 @@ class guildService {
         quest_status ( 
             status_id SERIAL PRIMARY KEY, 
             status_name TEXT NOT NULL, 
-            status_description TEXT NOT NULL
+            status_description TEXT NOT NULL,
+            is_deleted BOOLEAN DEFAULT FALSE
         );`
     );
     return res;
   }
   async createQuestMetaTable() {
     const res = await this.db.query(
-      /*tier_role should be added after quest_status, once the tier_role tables have been set up in other features*/
       `CREATE TABLE 
         quest_meta ( 
             quest_id SERIAL PRIMARY KEY, 
@@ -475,10 +469,58 @@ class guildService {
             channel_id TEXT NOT NULL, 
             quest_type INTEGER NOT NULL, 
             quest_status INTEGER NOT NULL,
-             
+            tier INTEGER NULL
+            min_level INTEGER NOT NULL DEFAULT 1
+            max_level INTEGER NOT NULL DEFAULT 20
             start_date TIMESTAMP NULL, 
-            end_date TIMESTAMP NULL,  
+            end_date TIMESTAMP NULL,
+            is_deleted BOOLEAN DEFAULT FALSE,
+            CONSTRAINT fk_quest_type
+                FOREIGN KEY(quest_type)
+                    REFERENCES ${this.schema}.quest_types(type_id)
+                    ON DELETE SET NULL
+            CONSTRAINT fk_quest_status
+                FOREIGN KEY(quest_status)
+                    REFERENCES ${this.schema}.quest_status(status_id)
+                    ON DELETE SET NULL
+            CONSTRAINT fk_tier
+                FOREIGN KEY(tier)
+                    REFERENCES ${this.schema}.character_tiers(tier_id)
+                    ON DELETE SET NULL
         );`
+    );
+    return res;
+  }
+  async createQuestCharacterTable() {
+    const res = await this.db.query(
+      `CREATE TABLE 
+          quest_character (  
+              quest_id INTEGER NOT NULL, 
+              character_id TEXT NOT NULL, 
+              xp_rewards INTEGER NULL, 
+              gold_rewards INTEGER NULL, 
+              notes TEXT NULL,
+              is_deleted BOOLEAN DEFAULT FALSE
+              PRIMARY KEY (quest_id, character_id)
+              CONSTRAINT fk_quest
+                  FOREIGN KEY(quest_id)
+                      REFERENCES ${this.schema}.quest_meta(quest_id)
+                      ON DELETE SET NULL
+              CONSTRAINT fk_character_id
+                  FOREIGN KEY(character_id)
+                      REFERENCES ${this.schema}.characters(character_id)
+                      ON DELETE SET NULL
+          );`
+    );
+    return res;
+  }
+  async createQuestManagerConfigTable() {
+    const res = await this.db.query(
+      `CREATE TABLE 
+            quest_manager_config (  
+                name TEXT PRIMARY KEY, 
+                value TEXT, 
+            );`
     );
     return res;
   }
