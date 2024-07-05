@@ -413,6 +413,12 @@ class guildService {
     ------------------------
     */
   async createQuestManagementTables() {
+    if (await this.isQuestManagementEnabled()) {
+      return {
+        success: false,
+        message: "Quest Management is already enabled!",
+      };
+    }
     if (!(await this.isChannelCharactersEnabled())) {
       await this.createChannelCharactersTable();
     }
@@ -420,7 +426,15 @@ class guildService {
     await this.createQuestStatusTable();
     await this.createQuestMetaTable();
     await this.createQuestCharacterTable();
-    await this.createQuestManagerConfigTable();
+    return {
+      success: true,
+      message: `Quest Management successfully enabled!
+        There are still a few steps to take to fully set up your quest management experience: 
+        To add or edit Quest Types, use the \`/edit_quest_types\` command 
+        To add or edit Quest Statuses, use the \`/edit_quest_statuses\` command
+        To ensure that Quest tiers are set up properly, use the \`/edit_tiers\` command
+        `,
+    };
   }
 
   async createChannelCharactersTable() {
@@ -514,16 +528,7 @@ class guildService {
     );
     return res;
   }
-  async createQuestManagerConfigTable() {
-    const res = await this.db.query(
-      `CREATE TABLE 
-            quest_manager_config (  
-                name TEXT PRIMARY KEY, 
-                value TEXT, 
-            );`
-    );
-    return res;
-  }
+
   async createCharacterTiersTable() {
     const res = await this.db.query(
       `CREATE TABLE 
