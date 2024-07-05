@@ -488,6 +488,8 @@ class guildService {
             max_level INTEGER NOT NULL DEFAULT 20
             start_date TIMESTAMP NULL, 
             end_date TIMESTAMP NULL,
+            dmtokens_used BOOLEAN DEFAULT FALSE,
+            arctokens_used BOOLEAN DEFAULT FALSE,
             is_deleted BOOLEAN DEFAULT FALSE,
             CONSTRAINT fk_quest_type
                 FOREIGN KEY(quest_type)
@@ -528,7 +530,6 @@ class guildService {
     );
     return res;
   }
-
   async createCharacterTiersTable() {
     const res = await this.db.query(
       `CREATE TABLE 
