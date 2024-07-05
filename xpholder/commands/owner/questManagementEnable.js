@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
-const { isAuthorizedRole } = require("../../utils");
+const { isAuthorizedRole, logError } = require("../../utils");
 const commandLevel = "owner";
 
 module.exports = {
@@ -26,7 +26,14 @@ module.exports = {
       );
       return;
     }
-    const { message } = await guildService.createQuestManagementTables();
-    await interaction.editReply(message);
+    const res = await guildService.createQuestManagementTables();
+    if (res.success) {
+      await interaction.editReply(res.message);
+    } else {
+      await interaction.editReply(
+        "Something went wrong. The details have been sent to the bot's developers."
+      );
+      logError(interaction, res.error);
+    }
   },
 };
