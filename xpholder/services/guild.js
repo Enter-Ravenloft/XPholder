@@ -624,7 +624,7 @@ class guildService {
     );
     let res;
     if (existingQuestType) {
-      res = await this.db.query(
+      await this.db.query(
         `
         UPDATE 
             ${this.schema}.quest_types 
@@ -636,8 +636,9 @@ class guildService {
         `,
         [description, existingQuestType.type_id]
       );
+      res = `Successfully updated "${existingQuestStatus.type_name}" Quest Type!`;
     } else {
-      res = await this.db.query(
+      await this.db.query(
         `
         INSERT INTO ${this.schema}.quest_types (
             type_name,
@@ -646,6 +647,7 @@ class guildService {
         VALUES($1,$2);`,
         [name, description]
       );
+      res = `Successfully created "${existingQuestStatus.status_name}" Quest Type!`;
     }
     await this.fetchQuestTypes();
     return res;
@@ -655,7 +657,7 @@ class guildService {
       (type) => type.type_name === name
     );
     if (existingQuestType) {
-      return await this.db.query(
+      await this.db.query(
         `
             UPDATE 
                 ${this.schema}.quest_types 
@@ -666,8 +668,67 @@ class guildService {
             `,
         [existingQuestType.type_id]
       );
+
+      return `Successfully deleted "${existingQuestStatus.status_name}" Quest Type!`;
     } else {
       return "Quest Type does not exist to delete";
+    }
+  }
+  async updateQuestStatus(name, description) {
+    const existingQuestStatus = this.questStatuses.find(
+      (status) => status.status_name === name
+    );
+    let res;
+    if (existingQuestStatus) {
+      await this.db.query(
+        `
+        UPDATE 
+            ${this.schema}.quest_statuses 
+        SET 
+            status_description = $1, 
+            is_deleted = FALSE
+        WHERE 
+            status_id = $2;
+        `,
+        [description, existingQuestType.type_id]
+      );
+      res = `Successfully updated "${existingQuestStatus.status_name}" Quest Status!`;
+    } else {
+      await this.db.query(
+        `
+        INSERT INTO ${this.schema}.quest_statuses (
+            status_name,
+            status_description
+        ) 
+        VALUES($1,$2);`,
+        [name, description]
+      );
+      res = `Successfully created "${existingQuestStatus.status_name}" Quest Status!`;
+    }
+    await this.fetchQuestStatuses();
+    return res;
+  }
+  async deleteQuestStatus(name) {
+    const existingQuestType = this.questStatuses.find(
+      (type) => type.type_name === name
+    );
+    if (existingQuestType) {
+      await this.db.query(
+        `
+            UPDATE 
+                ${this.schema}.quest_statuses 
+            SET 
+                is_deleted = TRUE 
+            WHERE 
+                status_id = $1;
+            `,
+        [existingQuestType.status_id]
+      );
+
+      await this.fetchQuestStatuses();
+      return `Successfully deleted "${existingQuestStatus.status_name}" Quest Status!`;
+    } else {
+      return "Quest Status does not exist to delete";
     }
   }
   async createQuest(questObject) {
