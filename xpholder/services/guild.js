@@ -249,6 +249,7 @@ class guildService {
     minimumLevel = 0,
     maximumLevel = 0
   ) {
+    let res;
     if (xpBonus >= 0) {
       const existingTier = this.characterTiers.find(
         (tier) => tier["role_id"] === roleId
@@ -263,7 +264,7 @@ class guildService {
             ? existingTier["maximum_level"]
             : tierMinimum;
 
-        await this.db.query(
+        res = await this.db.query(
           `
             UPDATE 
                 ${this.schema}.character_tiers
@@ -272,7 +273,8 @@ class guildService {
                 maximum_level = $2,
                 xp_bonus = $3
             WHERE 
-                role_id = $4;   
+                role_id = $4
+            RETURNING *;   
         `,
           [tierMinimum, tierMaximum, xpBonus, roleId]
         );
@@ -280,7 +282,7 @@ class guildService {
         const tierMinimum = minimumLevel > 0 ? minimumLevel : 1;
         const tierMaximum =
           maximumLevel > tierMinimum ? maximumLevel : tierMinimum;
-        await this.db.query(
+        res = await this.db.query(
           `
               INSERT INTO
                 ${this.schema}.character_tiers
@@ -295,21 +297,23 @@ class guildService {
                     $2,
                     $3,
                     $4
-                );
+                )
+                RETURNING *;
           `,
           [tierMinimum, tierMaximum, xpBonus, roleId]
         );
       }
     } else {
-      await this.db.query(
+      res = await this.db.query(
         `
             DELETE FROM ${this.schema}.character_tiers
             WHERE role_id = $1
-            `,
+            RETURNING *;`,
         [roleId]
       );
     }
     this.characterTiers = await this.fetchCharacterTiers();
+    return res.rows;
   }
 
   /*
@@ -497,7 +501,8 @@ class guildService {
             VALUES(
             'Created',
             'This quest has been created, but not begun.'
-            )`
+            )
+        RETURNING *`
     );
     return res;
   }
@@ -632,11 +637,12 @@ class guildService {
             type_description = $1, 
             is_deleted = FALSE
         WHERE 
-            type_id = $2;
+            type_id = $2
+        RETURNING *;
         `,
         [description, existingQuestType.type_id]
       );
-      res = `Successfully updated "${existingQuestStatus.type_name}" Quest Type!`;
+      res = `Successfully updated "${existingQuestType.type_name}" Quest Type!`;
     } else {
       await this.db.query(
         `
@@ -644,10 +650,11 @@ class guildService {
             type_name,
             type_description
         ) 
-        VALUES($1,$2);`,
+        VALUES($1,$2)
+        RETURNING *;`,
         [name, description]
       );
-      res = `Successfully created "${existingQuestStatus.status_name}" Quest Type!`;
+      res = `Successfully created "${name}" Quest Type!`;
     }
     await this.fetchQuestTypes();
     return res;
@@ -664,12 +671,13 @@ class guildService {
             SET 
                 is_deleted = TRUE 
             WHERE 
-                type_id = $1;
+                type_id = $1
+            RETURNING *;
             `,
         [existingQuestType.type_id]
       );
 
-      return `Successfully deleted "${existingQuestStatus.status_name}" Quest Type!`;
+      return `Successfully deleted "${name}" Quest Type!`;
     } else {
       return "Quest Type does not exist to delete";
     }
@@ -688,7 +696,8 @@ class guildService {
             status_description = $1, 
             is_deleted = FALSE
         WHERE 
-            status_id = $2;
+            status_id = $2
+        RETURNING *;
         `,
         [description, existingQuestType.type_id]
       );
@@ -700,10 +709,11 @@ class guildService {
             status_name,
             status_description
         ) 
-        VALUES($1,$2);`,
+        VALUES($1,$2)
+        RETURNING *;`,
         [name, description]
       );
-      res = `Successfully created "${existingQuestStatus.status_name}" Quest Status!`;
+      res = `Successfully created "${name}" Quest Status!`;
     }
     await this.fetchQuestStatuses();
     return res;
@@ -720,20 +730,21 @@ class guildService {
             SET 
                 is_deleted = TRUE 
             WHERE 
-                status_id = $1;
+                status_id = $1
+            RETURNING *;
             `,
         [existingQuestType.status_id]
       );
 
       await this.fetchQuestStatuses();
-      return `Successfully deleted "${existingQuestStatus.status_name}" Quest Status!`;
+      return `Successfully deleted "${name}" Quest Status!`;
     } else {
       return "Quest Status does not exist to delete";
     }
   }
   async createQuest(questObject) {
     const tierObj = this.characterTiers.find(
-      (tier) => tier.tier_id === questObject.tier
+      (tier) => tier.role_id === questObject.tier
     );
     const minLevel = questObject.minLevel || tierObj.minimum_level;
     const maxLevel = questObject.maxLevel || tierObj.maximum_level;
@@ -752,28 +763,53 @@ class guildService {
             max_level,
             dmtokens_used,
             arctokens_used
-            ) VALUES ( $1, $2, $3, $4, $5, $6, $7,$8,$9, $10 );`,
+            ) VALUES ( $1, $2, $3, $4, $5, $6, $7,$8,$9, $10 )
+        RETURNING *;`,
       [
         questObject.dm,
         questObject.name,
         questObject.channel,
         questObject.questType,
         status.status_id,
-        questObject.tier,
+        tierObj.tier_id,
         minLevel,
         maxLevel,
         questObject.dmTokens,
         questObject.arcTokens,
       ]
     );
-    return res;
+    return res.rows;
   }
-  getQuestTypeAutocomplete(typedString) {
+  getQuestTypeNameAutocomplete(typedString) {
     const questTypes = this.questTypes
       .filter((choice) => !choice.is_deleted)
       .map((choice) => ({
         name: choice.type_name,
         value: choice.type_name,
+      }));
+    const filtered = questTypes.filter((choice) =>
+      choice.name.toLowerCase().includes(typedString.toLowerCase())
+    );
+    return filtered;
+  }
+  getQuestTypeIdAutocomplete(typedString) {
+    const questTypes = this.questTypes
+      .filter((choice) => !choice.is_deleted)
+      .map((choice) => ({
+        name: choice.type_name,
+        value: choice.type_id,
+      }));
+    const filtered = questTypes.filter((choice) =>
+      choice.name.toLowerCase().includes(typedString.toLowerCase())
+    );
+    return filtered;
+  }
+  getQuestStatusAutocomplete(typedString) {
+    const questTypes = this.questStatuses
+      .filter((choice) => !choice.is_deleted)
+      .map((choice) => ({
+        name: choice.status_name,
+        value: choice.status_name,
       }));
     const filtered = questTypes.filter((choice) =>
       choice.name.toLowerCase().includes(typedString.toLowerCase())

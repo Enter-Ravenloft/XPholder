@@ -70,7 +70,7 @@ module.exports = {
     const option = interaction.options.getFocused(true);
     switch (option.name) {
       case "type":
-        const choices = guildService.getQuestTypeAutocomplete(option.value);
+        const choices = guildService.getQuestTypeNameAutocomplete(option.value);
         await interaction.respond(choices);
         break;
     }

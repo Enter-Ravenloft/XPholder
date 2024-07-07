@@ -87,7 +87,7 @@ module.exports = {
 
     const questObject = {
       name: questName,
-      channel: rpChannel,
+      channel: rpChannel.id,
       dm: dungeonMaster,
       questType,
       dmTokens,
@@ -97,14 +97,17 @@ module.exports = {
       maxLevel,
     };
     const newQuest = await guildService.createQuest(questObject);
-
-    await interaction.editReply("Success!");
+    if (newQuest.length === 1) {
+      const quest = newQuest.find((quest) => quest);
+      await interaction.editReply(`Successfully created "${quest.quest_name}"!
+The Quest ID is \`${quest.quest_id}\`. Save this ID for reference later.`);
+    }
   },
   async autocomplete(guildService, interaction) {
     const option = interaction.options.getFocused(true);
     switch (option.name) {
       case "quest_type":
-        guildService.getQuestTypeAutocomplete(option.value);
+        const choices = guildService.getQuestTypeIdAutocomplete(option.value);
         await interaction.respond(choices);
         break;
     }
