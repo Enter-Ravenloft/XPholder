@@ -36,6 +36,15 @@ class guildService {
       "xp_per_post"
     );
     this.characterTiers = await this.fetchCharacterTiers();
+    this.questsEnabled = await this.isQuestManagementEnabled();
+
+    if (this.questsEnabled) {
+      await this.fetchQuestTypes();
+      await this.fetchQuestStatuses();
+    } else {
+      this.questTypes = [];
+      this.questStatuses = [];
+    }
   }
 
   async loadInit(table, primaryKey, value) {
@@ -463,7 +472,7 @@ class guildService {
         quest_types ( 
             type_id SERIAL PRIMARY KEY, 
             type_name TEXT NOT NULL, 
-            type_description TEXT NOT NULL,
+            type_description TEXT DEFAULT '',
             is_deleted BOOLEAN DEFAULT FALSE
         );`
     );
@@ -472,12 +481,23 @@ class guildService {
   async createQuestStatusTable() {
     const res = await this.db.query(
       `CREATE TABLE 
-        quest_status ( 
+        quest_statuses ( 
             status_id SERIAL PRIMARY KEY, 
             status_name TEXT NOT NULL, 
-            status_description TEXT NOT NULL,
+            status_description TEXT DEFAULT '',
             is_deleted BOOLEAN DEFAULT FALSE
         );`
+    );
+    const insert = await this.db.query(
+      `INSERT INTO
+            ${this.schema}.quest_statuses (
+            status_name, 
+            status_description
+            )
+            VALUES(
+            'Created',
+            'This quest has been created, but not begun.'
+            )`
     );
     return res;
   }
@@ -486,31 +506,26 @@ class guildService {
       `CREATE TABLE 
         quest_meta ( 
             quest_id SERIAL PRIMARY KEY, 
+            quest_name TEXT NOT NULL,
             dungeon_master_id TEXT NOT NULL, 
-            role_id TEXT NOT NULL, 
+            role_id TEXT NULL, 
             channel_id TEXT NOT NULL, 
-            quest_type INTEGER NOT NULL, 
-            quest_status INTEGER NOT NULL,
+            quest_type INTEGER NULL 
+                REFERENCES ${this.schema}.quest_types(type_id) 
+                ON DELETE SET NULL, 
+            quest_status INTEGER NULL
+                REFERENCES ${this.schema}.quest_statuses(status_id)
+                ON DELETE SET NULL,
             tier INTEGER NULL
-            min_level INTEGER NOT NULL DEFAULT 1
-            max_level INTEGER NOT NULL DEFAULT 20
+                REFERENCES ${this.schema}.character_tiers(tier_id)
+                ON DELETE SET NULL,
+            min_level INTEGER NOT NULL DEFAULT 1,
+            max_level INTEGER NOT NULL DEFAULT 20,
             start_date TIMESTAMP NULL, 
             end_date TIMESTAMP NULL,
             dmtokens_used BOOLEAN DEFAULT FALSE,
             arctokens_used BOOLEAN DEFAULT FALSE,
-            is_deleted BOOLEAN DEFAULT FALSE,
-            CONSTRAINT fk_quest_type
-                FOREIGN KEY(quest_type)
-                    REFERENCES ${this.schema}.quest_types(type_id)
-                    ON DELETE SET NULL
-            CONSTRAINT fk_quest_status
-                FOREIGN KEY(quest_status)
-                    REFERENCES ${this.schema}.quest_status(status_id)
-                    ON DELETE SET NULL
-            CONSTRAINT fk_tier
-                FOREIGN KEY(tier)
-                    REFERENCES ${this.schema}.character_tiers(tier_id)
-                    ON DELETE SET NULL
+            is_deleted BOOLEAN DEFAULT FALSE             
         );`
     );
     return res;
@@ -519,22 +534,18 @@ class guildService {
     const res = await this.db.query(
       `CREATE TABLE 
           quest_character (  
-              quest_id INTEGER NOT NULL, 
-              character_id TEXT NOT NULL, 
+              quest_id INTEGER NULL
+                REFERENCES ${this.schema}.quest_meta
+                ON DELETE SET NULL, 
+              character_id TEXT NULL
+                REFERENCES ${this.schema}.characters
+                ON DELETE SET NULL, 
               xp_rewards INTEGER NULL, 
               gold_rewards INTEGER NULL, 
               notes TEXT NULL,
-              is_deleted BOOLEAN DEFAULT FALSE
+              is_deleted BOOLEAN DEFAULT FALSE,
               PRIMARY KEY (quest_id, character_id)
-              CONSTRAINT fk_quest
-                  FOREIGN KEY(quest_id)
-                      REFERENCES ${this.schema}.quest_meta(quest_id)
-                      ON DELETE SET NULL
-              CONSTRAINT fk_character_id
-                  FOREIGN KEY(character_id)
-                      REFERENCES ${this.schema}.characters(character_id)
-                      ON DELETE SET NULL
-          );`
+        );`
     );
     return res;
   }
@@ -575,6 +586,138 @@ class guildService {
       return table.rows;
     }
     return [];
+  }
+  async fetchQuestTypes() {
+    const table = await this.db.query(
+      format(`
+            SELECT 
+                type_id, 
+                type_name, 
+                type_description
+            FROM
+                ${this.schema}.quest_types
+            `)
+    );
+    this.questTypes = table.rows;
+  }
+  async fetchQuestStatuses() {
+    const table = await this.db.query(
+      format(`
+              SELECT 
+                    status_id, 
+                    status_name, 
+                    status_description
+              FROM
+                  ${this.schema}.quest_statuses
+              `)
+    );
+    this.questStatuses = table.rows;
+  }
+  /**
+   ----------------------------
+  QUEST MANAGEMENT FUNCTIONS
+  -----------------------------
+   */
+  async updateQuestType(name, description) {
+    const existingQuestType = this.questTypes.find(
+      (type) => type.type_name === name
+    );
+    let res;
+    if (existingQuestType) {
+      res = await this.db.query(
+        `
+        UPDATE 
+            ${this.schema}.quest_types 
+        SET 
+            type_description = $1, 
+            is_deleted = FALSE
+        WHERE 
+            type_id = $2;
+        `,
+        [description, existingQuestType.type_id]
+      );
+    } else {
+      res = await this.db.query(
+        `
+        INSERT INTO ${this.schema}.quest_types (
+            type_name,
+            type_description
+        ) 
+        VALUES($1,$2);`,
+        [name, description]
+      );
+    }
+    await this.fetchQuestTypes();
+    return res;
+  }
+  async deleteQuestType(name) {
+    const existingQuestType = this.questTypes.find(
+      (type) => type.type_name === name
+    );
+    if (existingQuestType) {
+      return await this.db.query(
+        `
+            UPDATE 
+                ${this.schema}.quest_types 
+            SET 
+                is_deleted = TRUE 
+            WHERE 
+                type_id = $1;
+            `,
+        [existingQuestType.type_id]
+      );
+    } else {
+      return "Quest Type does not exist to delete";
+    }
+  }
+  async createQuest(questObject) {
+    const tierObj = this.characterTiers.find(
+      (tier) => tier.tier_id === questObject.tier
+    );
+    const minLevel = questObject.minLevel || tierObj.minimum_level;
+    const maxLevel = questObject.maxLevel || tierObj.maximum_level;
+    const status = this.questStatuses.find(
+      (status) => status.status_name === "Created"
+    );
+    const res = await this.db.query(
+      `INSERT INTO ${this.schema}.quest_meta ( 
+            dungeon_master_id,
+            quest_name, 
+            channel_id, 
+            quest_type, 
+            quest_status,
+            tier,
+            min_level,
+            max_level,
+            dmtokens_used,
+            arctokens_used
+            ) VALUES ( $1, $2, $3, $4, $5, $6, $7,$8,$9, $10 );`,
+      [
+        questObject.dm,
+        questObject.name,
+        questObject.channel,
+        questObject.questType,
+        status.status_id,
+        questObject.tier,
+        minLevel,
+        maxLevel,
+        questObject.dmTokens,
+        questObject.arcTokens,
+      ]
+    );
+    return res;
+  }
+  getQuestTypeAutocomplete(typedString) {
+    const questTypes = this.questTypes
+      .filter((choice) => !choice.is_deleted)
+      .map((choice) => ({
+        name: choice.type_name,
+        value: choice.type_name,
+      }));
+    const filtered = questTypes.filter((choice) =>
+      choice.name.toLowerCase().includes(typedString.toLowerCase())
+    );
+    return filtered;
   }
 }
 
