@@ -70,7 +70,7 @@ module.exports = {
     switch (view) {
       case "config":
         gameEmbed = [
-          buildCongifEmbed(guildService.config, guildService.characterTiers),
+          buildConfigEmbed(guildService.config, guildService.characterTiers),
         ];
         break;
       case "channels":
@@ -134,7 +134,7 @@ module.exports = {
 BUILD EMBEDS
 ------------
 */
-function buildCongifEmbed(configObj, tiersArr) {
+function buildConfigEmbed(configObj, tiersArr) {
   const tierFields = [];
   tiersArr.forEach((tier, index) => {
     tierFields.push({

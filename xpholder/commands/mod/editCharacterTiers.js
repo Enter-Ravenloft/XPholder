@@ -14,9 +14,7 @@ module.exports = {
     .addIntegerOption((option) =>
       option
         .setName("bonus")
-        .setDescription(
-          "Multiplyer To Awareded XP ( negatives remove from database )"
-        )
+        .setDescription("Multiplier To Awareded XP ( -1 remove from database )")
         .setRequired(true)
     )
     .addIntegerOption((option) =>
@@ -28,9 +26,7 @@ module.exports = {
     .addIntegerOption((option) =>
       option
         .setName("maximum_level")
-        .setDescription(
-          "Last level of the tier (must be equal to or larger than minimum_level)"
-        )
+        .setDescription("Last level of the tier")
         .setRequired(true)
     )
     .addBooleanOption((option) =>
