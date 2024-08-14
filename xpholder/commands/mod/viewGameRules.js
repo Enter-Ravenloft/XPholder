@@ -185,31 +185,31 @@ ${configObj.approveMessage}`
         name: "Character 5",
         value: `<@&${configObj.character5RoleId}>`,
       },
-      {
-        inline: true,
-        name: "Character 6",
-        value: `<@&${configObj.character6RoleId}>`,
-      },
-      {
-        inline: true,
-        name: "Character 7",
-        value: `<@&${configObj.character7RoleId}>`,
-      },
-      {
-        inline: true,
-        name: "Character 8",
-        value: `<@&${configObj.character8RoleId}>`,
-      },
-      {
-        inline: true,
-        name: "Character 9",
-        value: `<@&${configObj.character9RoleId}>`,
-      },
-      {
-        inline: true,
-        name: "Character 10",
-        value: `<@&${configObj.character10RoleId}>`,
-      },
+      // {
+      //   inline: true,
+      //   name: "Character 6",
+      //   value: `<@&${configObj.character6RoleId}>`,
+      // },
+      // {
+      //   inline: true,
+      //   name: "Character 7",
+      //   value: `<@&${configObj.character7RoleId}>`,
+      // },
+      // {
+      //   inline: true,
+      //   name: "Character 8",
+      //   value: `<@&${configObj.character8RoleId}>`,
+      // },
+      // {
+      //   inline: true,
+      //   name: "Character 9",
+      //   value: `<@&${configObj.character9RoleId}>`,
+      // },
+      // {
+      //   inline: true,
+      //   name: "Character 10",
+      //   value: `<@&${configObj.character10RoleId}>`,
+      // },
       {
         inline: true,
         name: "Level-Up Channel",
