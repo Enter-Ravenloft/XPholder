@@ -103,7 +103,7 @@ module.exports = {
         }
         break;
       case "tiers":
-        gameEmbed = [buildTiersEmbed(guildService.characterTiers)];
+        gameEmbed = [await buildTiersEmbed(guildService.characterTiers)];
         break;
     }
 
