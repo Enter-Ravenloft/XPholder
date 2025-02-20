@@ -30,6 +30,7 @@ const {
   getTier,
   logCommand,
   logError,
+  logRPXP,
 } = require("./xpholder/utils");
 const {
   XPHOLDER_COLOUR,
@@ -237,7 +238,7 @@ client.on("messageCreate", async (message) => {
         --------------
         */
 
-    const messageCount = message.content.split(/\s+/).length;
+    const wordCount = message.content.split(/\s+/).length;
     const guild = await client.guilds.fetch(guildId);
     const player = await guild.members.fetch(message.author.id);
 
@@ -275,7 +276,7 @@ client.on("messageCreate", async (message) => {
     }
 
     const xp = getXp(
-      messageCount,
+      wordCount,
       roleBonus,
       gService.channels[channel.id],
       gService.config["xpPerPostDivisor"],
@@ -292,9 +293,11 @@ client.on("messageCreate", async (message) => {
           xp / playerCharacters.length,
           player
         );
+        logRPXP(guild, player, subCharacter["name"], xp / playerCharacters.length, message);
       }
     } else {
       await updateCharacterXpAndMessage(guild, gService, character, xp, player);
+      logRPXP(guild, player, character["name"], xp, message);
     }
   } catch (error) {
     console.log(error);

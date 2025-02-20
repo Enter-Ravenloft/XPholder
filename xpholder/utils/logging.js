@@ -9,12 +9,10 @@ const ERROR_CHANNEL_ID = process.env.ERROR_CHANNEL_ID;
 async function logCommand(interaction) {
   // CREATING THE LOG EMBED
   const logEmbed = new EmbedBuilder()
-    .setTitle("Command Was Used")
+    .setTitle(`${interaction.member.displayName} used "${interaction.commandName}"`)
     .setFields(
-      { inline: false, name: "Guild", value: `${interaction.guild.name}` },
-      { inline: false, name: "Guild Id", value: `${interaction.guild.id}` },
-      { inline: false, name: "Author", value: `${interaction.user.username}` },
-      { inline: false, name: "Author Id", value: `${interaction.user.id}` },
+      { inline: false, name: "Guild", value: `${interaction.guild.name} (${interaction.guild.id})` },
+      { inline: false, name: "Author", value: `${interaction.member.displayName} (${interaction.user.id})` },
       { inline: false, name: "Command", value: `${interaction.commandName}` }
     )
     .setTimestamp()
@@ -47,10 +45,8 @@ async function logError(interaction, error) {
     .setTitle("An Error Has Occured")
     .setDescription(`${error}`)
     .setFields(
-      { inline: false, name: "Guild", value: `${interaction.guild.name}` },
-      { inline: false, name: "Guild Id", value: `${interaction.guild.id}` },
-      { inline: false, name: "Author", value: `${interaction.user.username}` },
-      { inline: false, name: "Author Id", value: `${interaction.user.id}` },
+      { inline: false, name: "Guild", value: `${interaction.guild.name} (${interaction.guild.id})` },
+      { inline: false, name: "Author", value: `${interaction.member.displayName} (${interaction.user.id})` },
       { inline: false, name: "Command", value: `${interaction.commandName}` }
     )
     .setTimestamp()
@@ -76,7 +72,23 @@ async function logError(interaction, error) {
     embeds: [logErrorEmbed],
   });
 }
+
+async function logRPXP(guild, player, characterName, xp, message) {
+  // CREATING THE LOG MESSAGE
+  const logMessage = `Awarded **${xp}** RP XP to **${characterName}** (${player.displayName}) for: ${message.url}`;
+
+  // FETCHING THE TESTING SERVER AND LOG CHANNEL
+  const testingServer = await guild.fetch(TESTING_SERVER_ID);
+  const loggingChannel = await testingServer.channels.fetch(LOGGING_CHANNEL_ID);
+
+  // SENDING LOG MESSAGE
+  loggingChannel.send({
+    content: logMessage,
+  });
+}
+
 module.exports = {
   logCommand,
   logError,
+  logRPXP,
 };

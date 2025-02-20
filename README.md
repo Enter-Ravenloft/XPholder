@@ -71,3 +71,11 @@ ERROR_CHANNEL_ID=
 - Run `node main.js` to start the bot
 - Run `/register` in the test server
   - \*\* if one is available, use `/import_characters_csv` to restore from a backup
+
+## Adding a New Command
+
+Add a <commandName>.js file under one of commands/everyone/, commands/mod/, or commands/owner.
+
+Redeploy the XPHolder bot with the changes.
+
+Run `node deploy-global-commands.js` to install the new commands.
