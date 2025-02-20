@@ -293,11 +293,11 @@ client.on("messageCreate", async (message) => {
           xp / playerCharacters.length,
           player
         );
-        logRPXP(guild, player, subCharacter["name"], xp / playerCharacters.length, message);
+        logRPXP(player, subCharacter["name"], xp / playerCharacters.length, message);
       }
     } else {
       await updateCharacterXpAndMessage(guild, gService, character, xp, player);
-      logRPXP(guild, player, character["name"], xp, message);
+      logRPXP(player, character["name"], xp, message);
     }
   } catch (error) {
     console.log(error);

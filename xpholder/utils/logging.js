@@ -73,12 +73,12 @@ async function logError(interaction, error) {
   });
 }
 
-async function logRPXP(guild, player, characterName, xp, message) {
+async function logRPXP(player, characterName, xp, message) {
   // CREATING THE LOG MESSAGE
   const logMessage = `Awarded **${xp}** RP XP to **${characterName}** (${player.displayName}) for: ${message.url}`;
 
   // FETCHING THE TESTING SERVER AND LOG CHANNEL
-  const testingServer = await guild.fetch(TESTING_SERVER_ID);
+  const testingServer = await message.client.guilds.fetch(TESTING_SERVER_ID);
   const loggingChannel = await testingServer.channels.fetch(LOGGING_CHANNEL_ID);
 
   // SENDING LOG MESSAGE
