@@ -208,6 +208,8 @@ module.exports = {
       return;
     }
 
+    await interaction.deferReply({ ephemeral: true });
+
     if (
       ["request_approve", "request_reject"].includes(interaction.customId) &&
       (interaction.member._roles.includes(
@@ -240,25 +242,25 @@ module.exports = {
             updatedEmbed.addFields({
               inline: false,
               name: "Approved By",
-              value: `${interaction.user}`,
+              value: `${interaction.member.displayName}`,
             });
             updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
             await updateCharacterXP(player, character, deltaXp, guildService);
-            logRequestXPApproval(player, characterName, interaction.user, deltaXp);
+            logRequestXPApproval(player, characterName, interaction.member, deltaXp);
             break;
           case "request_reject":
             updatedEmbed.addFields({
               inline: false,
               name: "Rejected By",
-              value: `${interaction.user}`,
+              value: `${interaction.member.displayName}`,
             });
             updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
-            logRequestXPRejection(player, characterName, interaction.user, deltaXp);
+            logRequestXPRejection(player, characterName, interaction.member, deltaXp);
             break;
         }
 
         // Update the original message with the new embed and remove the buttons
-        await interaction.update({ embeds: [updatedEmbed], components: [] });
+        await interaction.editReply({ embeds: [updatedEmbed], components: [] });
 
         // DM the player that made the request about the approval / rejection
         try {
