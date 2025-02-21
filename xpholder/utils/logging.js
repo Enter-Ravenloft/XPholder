@@ -57,9 +57,9 @@ async function logError(interaction, error) {
 }
 
 async function logRPXP(player, characterName, xp, message) {
-  const message = `**RPXP Awarded:** ${xp.toFixed(1)} XP to ${characterName} (${player.displayName}) for: ${message.url}`;
+  const logMessage = `**RPXP Awarded:** ${xp.toFixed(1)} XP to ${characterName} (${player.displayName}) for: ${message.url}`;
 
-  _logToDiscord(message.guild, { content: message }, "logRPXP");
+  _logToDiscord(message.guild, { content: logMessage }, "logRPXP");
 }
 
 async function logRequestXPApproval(requestPlayer, characterName, approvalPlayer, deltaXP) {
