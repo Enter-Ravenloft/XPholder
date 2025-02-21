@@ -208,8 +208,6 @@ module.exports = {
       return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
-
     if (
       ["request_approve", "request_reject"].includes(interaction.customId) &&
       (interaction.member._roles.includes(
@@ -246,7 +244,7 @@ module.exports = {
             });
             updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
             await updateCharacterXP(player, character, deltaXp, guildService);
-            logRequestXPApproval(player, characterName, interaction.member, deltaXp);
+            await logRequestXPApproval(player, characterName, interaction.member, deltaXp);
             break;
           case "request_reject":
             updatedEmbed.addFields({
@@ -255,7 +253,7 @@ module.exports = {
               value: `${interaction.user}`,
             });
             updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
-            logRequestXPRejection(player, characterName, interaction.member, deltaXp);
+            await logRequestXPRejection(player, characterName, interaction.member, deltaXp);
             break;
         }
 
