@@ -233,7 +233,7 @@ module.exports = {
         )[0].value;
         const player = await interaction.guild.members.fetch(playerId);
         const updatedEmbed = EmbedBuilder.from(originalEmbed);
-        const characterName = (await guildService.getCharacter(`${player.id}-${characterId}`))["name"];
+        const characterName = originalEmbed.title.replace("'s XP Request", "");
 
         switch (interaction.customId) {
           case "request_approve":
