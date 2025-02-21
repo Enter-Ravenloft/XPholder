@@ -242,7 +242,7 @@ module.exports = {
             updatedEmbed.addFields({
               inline: false,
               name: "Approved By",
-              value: `${interaction.member.displayName}`,
+              value: `${interaction.user}`,
             });
             updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
             await updateCharacterXP(player, character, deltaXp, guildService);
@@ -252,7 +252,7 @@ module.exports = {
             updatedEmbed.addFields({
               inline: false,
               name: "Rejected By",
-              value: `${interaction.member.displayName}`,
+              value: `${interaction.user}`,
             });
             updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
             logRequestXPRejection(player, characterName, interaction.member, deltaXp);
