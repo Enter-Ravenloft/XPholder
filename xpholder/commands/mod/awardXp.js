@@ -20,7 +20,7 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("award_xp")
-    .setDescription("Rewards The Player With XP / CXP! [ MOD ]")
+    .setDescription("Rewards The Player With XP! [ MOD ]")
 
     .addUserOption((option) =>
       option
@@ -45,8 +45,8 @@ module.exports = {
           { name: "Set Level", value: "set_level" },
           { name: "Set XP", value: "set_xp" },
           { name: "Give XP", value: "give_xp" },
-          { name: "Set CXP", value: "set_cxp" },
-          { name: "Give CXP", value: "give_cxp" }
+          // { name: "Set CXP", value: "set_cxp" },
+          // { name: "Give CXP", value: "give_cxp" }
         )
         .setRequired(true)
     )
@@ -254,7 +254,7 @@ module.exports = {
     } catch (error) {
       console.log(error);
       await interaction.editReply(
-        "XP awareded, but user could not be notified via DM."
+        "XP awarded, but user could not be notified via DM."
       );
     } finally {
       createButtonEvents(

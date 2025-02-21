@@ -2,9 +2,10 @@ const dotenv = require("dotenv");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR, XPHOLDER_RETIRE_COLOUR } = require("../config.json");
 dotenv.config();
-const TESTING_SERVER_ID = process.env.TESTING_SERVER_ID;
-const LOGGING_CHANNEL_ID = process.env.LOGGING_CHANNEL_ID;
-const ERROR_CHANNEL_ID = process.env.ERROR_CHANNEL_ID;
+
+const SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP = JSON.parse(
+  process.env.SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP
+);
 
 async function logCommand(interaction) {
   // CREATING THE LOG EMBED
@@ -27,16 +28,7 @@ async function logCommand(interaction) {
     });
   }
 
-  // FETCHING THE TESTING SERVER AND LOG CHANNEL
-  const testingServer = await interaction.client.guilds.fetch(
-    TESTING_SERVER_ID
-  );
-  const loggingChannel = await testingServer.channels.fetch(LOGGING_CHANNEL_ID);
-
-  // SENDING LOG EMBED
-  loggingChannel.send({
-    embeds: [logEmbed],
-  });
+  _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logCommand");
 }
 
 async function logError(interaction, error) {
@@ -61,34 +53,44 @@ async function logError(interaction, error) {
     });
   }
 
-  // FETCHING THE TESTING SERVER AND LOG CHANNEL
-  const testingServer = await interaction.client.guilds.fetch(
-    TESTING_SERVER_ID
-  );
-  const loggingChannel = await testingServer.channels.fetch(ERROR_CHANNEL_ID);
-
-  // REPORTING THE ERROR
-  loggingChannel.send({
-    embeds: [logErrorEmbed],
-  });
+  _logToDiscord(interaction.guild, { embeds: [logErrorEmbed] }, "logError");
 }
 
 async function logRPXP(player, characterName, xp, message) {
-  // CREATING THE LOG MESSAGE
-  const logMessage = `Awarded **${xp.toFixed(1)}** RP XP to **${characterName}** (${player.displayName}) for: ${message.url}`;
+  const message = `**RPXP Awarded:** ${xp.toFixed(1)} XP to ${characterName} (${player.displayName}) for: ${message.url}`;
 
-  // FETCHING THE TESTING SERVER AND LOG CHANNEL
-  const testingServer = await message.client.guilds.fetch(TESTING_SERVER_ID);
-  const loggingChannel = await testingServer.channels.fetch(LOGGING_CHANNEL_ID);
+  _logToDiscord(message.guild, { content: message }, "logRPXP");
+}
 
-  // SENDING LOG MESSAGE
-  loggingChannel.send({
-    content: logMessage,
-  });
+async function logRequestXPApproval(requestPlayer, characterName, approvalPlayer, deltaXP) {
+  const message = `**XP Request Approved:** ${deltaXP} XP to ${characterName} (${requestPlayer.displayName}) approved by ${approvalPlayer.displayName}`;
+
+  _logToDiscord(requestPlayer.guild, { content: message }, "logRequestXPApproval");
+}
+
+async function logRequestXPRejection(requestPlayer, characterName, approvalPlayer, deltaXP) {
+  const message = `**XP Request Rejected:** ${deltaXP} XP to ${characterName} (${requestPlayer.displayName}) rejected by ${approvalPlayer.displayName}`;
+
+  _logToDiscord(requestPlayer.guild, { content: message }, "logRequestXPRejection");
+}
+
+async function _logToDiscord(server, sendPayload, label) {
+  if (!(server.id in SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP)) {
+    console.warn(
+      `${label}: Server ${server.id} not found in SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP (${SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP})`
+    );
+    return;
+  }
+
+  const loggingChannelId = SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP[server.id];
+  const loggingChannel = await server.channels.fetch(loggingChannelId);
+  loggingChannel.send(sendPayload);
 }
 
 module.exports = {
   logCommand,
   logError,
   logRPXP,
+  logRequestXPApproval,
+  logRequestXPRejection,
 };

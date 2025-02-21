@@ -5,10 +5,8 @@ const fs = require("fs");
 const dotenv = require("dotenv");
 dotenv.config();
 
-// Real XPHolder bot user ID
 const CLIENT_ID = process.env.CLIENT_ID;
-// Sobros server ID
-const TESTING_SERVER_ID = process.env.TESTING_SERVER_ID;
+const COMMAND_INSTALLATION_SERVER_ID = process.env.COMMAND_INSTALLATION_SERVER_ID;
 console.log(`Deploying commands to ${process.env.NODE_ENV}`);
 const commands = [];
 let commandsPath = ["everyone", "owner", "mod"];
@@ -31,7 +29,7 @@ const rest = new REST({ version: "9" }).setToken(process.env.DISCORD_TOKEN);
   try {
     console.log("Started refreshing application (/) commands.");
     await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, TESTING_SERVER_ID),
+      Routes.applicationGuildCommands(CLIENT_ID, COMMAND_INSTALLATION_SERVER_ID),
       { body: commands }
     );
 

@@ -17,12 +17,14 @@ const {
   setCharacterXP,
   updateCharacterXP,
   getEmbedLevelSettings,
+  logRequestXPApproval,
+  logRequestXPRejection,
 } = require("../../utils");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("request_xp")
-    .setDescription("Rewards The Player With XP / CXP!")
+    .setDescription("Rewards The Player With XP!")
 
     .addIntegerOption((option) =>
       option
@@ -231,6 +233,7 @@ module.exports = {
         )[0].value;
         const player = await interaction.guild.members.fetch(playerId);
         const updatedEmbed = EmbedBuilder.from(originalEmbed);
+        const characterName = (await guildService.getCharacter(`${player.id}-${characterId}`))["name"];
 
         switch (interaction.customId) {
           case "request_approve":
@@ -241,6 +244,7 @@ module.exports = {
             });
             updatedEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
             await updateCharacterXP(player, character, deltaXp, guildService);
+            logRequestXPApproval(player, characterName, interaction.user, deltaXp);
             break;
           case "request_reject":
             updatedEmbed.addFields({
@@ -249,10 +253,14 @@ module.exports = {
               value: `${interaction.user}`,
             });
             updatedEmbed.setColor(XPHOLDER_RETIRE_COLOUR);
+            logRequestXPRejection(player, characterName, interaction.user, deltaXp);
             break;
         }
 
+        // Update the original message with the new embed and remove the buttons
         await interaction.update({ embeds: [updatedEmbed], components: [] });
+
+        // DM the player that made the request about the approval / rejection
         try {
           await player.send({ embeds: [updatedEmbed] });
         } catch (error) {

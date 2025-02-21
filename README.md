@@ -58,15 +58,14 @@ DISCORD_TOKEN=
 
 # Client ID of bot
 CLIENT_ID=
-# ID of server that is used for testing purposes
-TESTING_SERVER_ID=
-# ID of the channel where logging should occur
-LOGGING_CHANNEL_ID=
-# ID of the channel where errors should be surfaced
-ERROR_CHANNEL_ID=
+# A JSON object mapping server IDs to channel IDs for logging,
+# e.g. '{"<serverId1>": <channelId1>, "<serverId2>": <channelId2>, ...}'
+SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP=
+# The server to install commands on
+COMMAND_INSTALLATION_SERVER_ID=
 ```
 
-- Run `node deploy-commands.js` to install the bot commands on TESTING_SERVER_ID
+- Run `node deploy-commands.js` to install the bot commands on COMMAND_INSTALLATION_SERVER_ID
 
 - Run `node main.js` to start the bot
 - Run `/register` in the test server
