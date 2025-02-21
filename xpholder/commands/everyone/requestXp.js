@@ -260,7 +260,7 @@ module.exports = {
         }
 
         // Update the original message with the new embed and remove the buttons
-        await interaction.editReply({ embeds: [updatedEmbed], components: [] });
+        await interaction.update({ embeds: [updatedEmbed], components: [] });
 
         // DM the player that made the request about the approval / rejection
         try {
