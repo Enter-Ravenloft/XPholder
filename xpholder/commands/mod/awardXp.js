@@ -349,7 +349,8 @@ function createButtonEvents(
       switch (btnInteraction.customId) {
         case "awardxp_undo":
           await setCharacterXP(player, updatingCharacter, guildService);
-          await logUndoAwardXP(btnInteraction.user, player, character["name"], character["xp"], oldXp);
+          // FIXME: This is causing 'This interaction failed' errors but nothing in the XPHolder logs...
+          // await logUndoAwardXP(btnInteraction.user, player, character["name"], character["xp"], oldXp);
 
           await btnInteraction.update({
             embeds: [undoAwardEmbed],
