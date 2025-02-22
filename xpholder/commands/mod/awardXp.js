@@ -296,6 +296,7 @@ module.exports = {
   },
 };
 
+// FIXME 2025-02-22: The Undo button is not currently working. Getting 'This interaction failed' from Discord, but no apps logs/exceptions.
 function createButtonEvents(
   guildService,
   interaction,
@@ -349,8 +350,7 @@ function createButtonEvents(
       switch (btnInteraction.customId) {
         case "awardxp_undo":
           await setCharacterXP(player, updatingCharacter, guildService);
-          // FIXME: This is causing 'This interaction failed' errors but nothing in the XPHolder logs...
-          // await logUndoAwardXP(btnInteraction.user, player, character["name"], character["xp"], oldXp);
+          await logUndoAwardXP(btnInteraction.user, player, character["name"], character["xp"], oldXp);
 
           await btnInteraction.update({
             embeds: [undoAwardEmbed],
