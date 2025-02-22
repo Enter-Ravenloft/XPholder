@@ -74,6 +74,19 @@ async function logRequestXPRejection(requestPlayer, characterName, approvalPlaye
   _logToDiscord(requestPlayer.guild, { content: message }, "logRequestXPRejection");
 }
 
+async function logAwardXP(awarderPlayer, awardeePlayer, characterName, oldXP, newXP) {
+  const deltaXP = newXP - oldXP;
+  const message = `**XP Awarded:** ${deltaXP} XP to ${characterName} (${awardeePlayer.displayName}) by ${awarderPlayer.displayName} (Old XP: ${oldXP}, New XP: ${newXP})`;
+
+  _logToDiscord(awarderPlayer.guild, { content: message }, "logAwardXP");
+}
+
+async function logUndoAwardXP(undoPlayer, awardeePlayer, characterName, oldXP, newXP) {
+  const message = `**XP Award Undone:** Award to ${characterName} (${awardeePlayer.displayName}) undone by ${undoPlayer.displayName} (Old XP: ${oldXP}, New XP: ${newXP})`;
+
+  _logToDiscord(undoPlayer.guild, { content: message }, "logUndoAwardXP");
+}
+
 async function _logToDiscord(server, sendPayload, label) {
   if (!(server.id in SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP)) {
     console.warn(
@@ -93,4 +106,6 @@ module.exports = {
   logRPXP,
   logRequestXPApproval,
   logRequestXPRejection,
+  logAwardXP,
+  logUndoAwardXP,
 };

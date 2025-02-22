@@ -15,6 +15,8 @@ const {
   setCharacterXP,
   getEmbedLevelSettings,
   buildXPEmbed,
+  logAwardXP,
+  logUndoAwardXP,
 } = require("../../utils");
 
 module.exports = {
@@ -102,6 +104,7 @@ module.exports = {
     let character = await guildService.getCharacter(
       `${player.id}-${characterId}`
     );
+    const member = await guild.members.fetch(player.id);
     let awardChannel;
     /*
         -------------
@@ -137,6 +140,7 @@ module.exports = {
     );
     const fullPlayerObj = await guild.members.fetch(player.id);
     await setCharacterXP(fullPlayerObj, character, guildService);
+    await logAwardXP(interaction.member, member, character["name"], oldXp, character["xp"]);
 
     /*
         -------------
@@ -198,34 +202,34 @@ module.exports = {
           { inline: false, name: "Progress", value: progressBar },
         ];
         break;
-      case "set_cxp":
-        title = `${character["name"]}'s CXP Was Set`;
-        fielfs = [
-          {
-            inline: true,
-            name: "Delta",
-            value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
-          },
-          { inline: true, name: "Level", value: newLevelInfo["level"] },
-          { inline: true, name: "Total CXP", value: `${value}` },
-          { inline: true, name: "Set By", value: `${interaction.user}` },
-          { inline: false, name: "Progress", value: progressBar },
-        ];
-        break;
-      case "give_cxp":
-        title = `${character["name"]}'s Was Awarded CXP`;
-        fielfs = [
-          {
-            inline: true,
-            name: "Delta",
-            value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
-          },
-          levelField,
-          { inline: true, name: "CXP Received", value: `${value}` },
-          { inline: true, name: "Set By", value: `${interaction.user}` },
-          { inline: false, name: "Progress", value: progressBar },
-        ];
-        break;
+      // case "set_cxp":
+      //   title = `${character["name"]}'s CXP Was Set`;
+      //   fielfs = [
+      //     {
+      //       inline: true,
+      //       name: "Delta",
+      //       value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
+      //     },
+      //     { inline: true, name: "Level", value: newLevelInfo["level"] },
+      //     { inline: true, name: "Total CXP", value: `${value}` },
+      //     { inline: true, name: "Set By", value: `${interaction.user}` },
+      //     { inline: false, name: "Progress", value: progressBar },
+      //   ];
+      //   break;
+      // case "give_cxp":
+      //   title = `${character["name"]}'s Was Awarded CXP`;
+      //   fielfs = [
+      //     {
+      //       inline: true,
+      //       name: "Delta",
+      //       value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
+      //     },
+      //     levelField,
+      //     { inline: true, name: "CXP Received", value: `${value}` },
+      //     { inline: true, name: "Set By", value: `${interaction.user}` },
+      //     { inline: false, name: "Progress", value: progressBar },
+      //   ];
+      //   break;
     }
     const awardEmbed = buildXPEmbed(title, character, fields, color, memo);
     /*
@@ -346,7 +350,10 @@ function createButtonEvents(
     try {
       switch (btnInteraction.customId) {
         case "awardxp_undo":
+          const member = await guild.members.fetch(player.id);
           await setCharacterXP(player, updatingCharacter, guildService);
+          await logUndoAwardXP(btnInteraction.member, member, character["name"], character["xp"], oldXp);
+
           await btnInteraction.update({
             embeds: [undoAwardEmbed],
             components: [],
