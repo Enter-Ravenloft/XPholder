@@ -309,8 +309,6 @@ function createButtonEvents(
     INITALIZATION
     -------------
     */
-  const guild = interaction.member.guild;
-
   const updatingCharacter = { ...character, xp: oldXp };
   let undoAwardEmbed = new EmbedBuilder()
     .setDescription("XP Reward Undone")
@@ -350,9 +348,8 @@ function createButtonEvents(
     try {
       switch (btnInteraction.customId) {
         case "awardxp_undo":
-          const member = await guild.members.fetch(player.id);
           await setCharacterXP(player, updatingCharacter, guildService);
-          await logUndoAwardXP(btnInteraction.member, member, character["name"], character["xp"], oldXp);
+          await logUndoAwardXP(btnInteraction.user, player, character["name"], character["xp"], oldXp);
 
           await btnInteraction.update({
             embeds: [undoAwardEmbed],

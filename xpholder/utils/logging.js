@@ -76,13 +76,13 @@ async function logRequestXPRejection(requestPlayer, characterName, approvalPlaye
 
 async function logAwardXP(awarderPlayer, awardeePlayer, characterName, oldXP, newXP) {
   const deltaXP = newXP - oldXP;
-  const message = `**XP Awarded:** ${deltaXP} XP to ${characterName} (${awardeePlayer.displayName}) by ${awarderPlayer.displayName} (Old XP: ${oldXP}, New XP: ${newXP})`;
+  const message = `**XP Awarded:** ${deltaXP} XP to ${characterName} (${awardeePlayer.displayName}) by ${awarderPlayer.displayName} (Old XP: ${oldXP.toFixed()}, New XP: ${newXP.toFixed()})`;
 
   _logToDiscord(awarderPlayer.guild, { content: message }, "logAwardXP");
 }
 
 async function logUndoAwardXP(undoPlayer, awardeePlayer, characterName, oldXP, newXP) {
-  const message = `**XP Award Undone:** Award to ${characterName} (${awardeePlayer.displayName}) undone by ${undoPlayer.displayName} (Old XP: ${oldXP}, New XP: ${newXP})`;
+  const message = `**XP Award Undone:** Award to ${characterName} (${awardeePlayer.displayName}) undone by ${undoPlayer.displayName} (Old XP: ${oldXP.toFixed()}, New XP: ${newXP.toFixed()})`;
 
   _logToDiscord(undoPlayer.guild, { content: message }, "logUndoAwardXP");
 }
