@@ -18,7 +18,7 @@ async function logCommand(interaction) {
     )
     .setTimestamp()
     .setColor(XPHOLDER_COLOUR)
-    .setThumbnail(`${interaction.client.user.avatarURL()}`);
+    .setThumbnail(interaction.client.user.avatarURL());
   // ADDING FIELDS FOR EACH OF THE OPTIONS PASSED THROUGH
   for (const option of interaction.options._hoistedOptions) {
     logEmbed.addFields({
@@ -43,7 +43,7 @@ async function logError(interaction, error) {
     )
     .setTimestamp()
     .setColor(XPHOLDER_RETIRE_COLOUR)
-    .setThumbnail(`${interaction.client.user.avatarURL()}`);
+    .setThumbnail(interaction.client.user.avatarURL());
   // ADDING FIELDS FOR EACH OF THE OPTIONS PASSED THROUGH
   for (const option of interaction.options._hoistedOptions) {
     logErrorEmbed.addFields({

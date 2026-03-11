@@ -27,11 +27,50 @@ create private threads
 Manage Roles
 attach files
 
-## Local development
+## Local Development (Docker)
 
 ### Requirements
 
-- node
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+### Setup
+
+1. **Create your `.env` file:**
+
+```bash
+cp .env.example .env
+```
+
+Fill in the values:
+
+```
+DISCORD_TOKEN=<your dev bot token>
+CLIENT_ID=<your dev bot application ID>
+COMMAND_INSTALLATION_SERVER_ID=<your test server ID>
+SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP={}
+```
+
+`DATABASE_URL` and `NODE_ENV` are handled by Docker Compose — don't add them to `.env`.
+
+2. **Start the bot and database:**
+
+```bash
+docker compose up --build
+```
+
+This starts a PostgreSQL database and the bot. The bot will log `ready` when it's connected to Discord.
+
+### Notes
+
+- Source code is volume-mounted, but you need to restart the bot container to pick up changes (`docker compose restart bot`).
+- The database persists in a Docker volume. Use `docker compose down -v` to wipe it.
+- Your dev bot is completely isolated from the production bot — separate token, separate database, separate server.
+
+## Local Development (without Docker)
+
+### Requirements
+
+- Node.js
 - PostgreSQL
 
 ### Setup
@@ -41,7 +80,7 @@ attach files
 - Download PostgreSQL installer from the [PostgreSQL Download Page](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)
 - Run the installer and follow instructions
 
-#### Clone and install XPHelper
+#### Clone and install XPholder
 
 - Clone the repo
 - Run `npm ci` to install project dependencies
