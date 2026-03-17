@@ -1,0 +1,164 @@
+const express = require("express");
+const router = express.Router();
+const { requireAuth, requireLogin } = require("../middleware/auth");
+const { getRegisteredGuilds, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats } = require("../db");
+
+router.get("/", requireAuth, async (req, res) => {
+  try {
+    const hasTable = await hasEventsTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
+    }
+
+    const { range, from, to } = req.query;
+    const dateRange = {};
+    const today = new Date().toISOString().split("T")[0];
+
+    if (range === "30d") {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      dateRange.from = d.toISOString().split("T")[0];
+    } else if (range === "1y") {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      dateRange.from = d.toISOString().split("T")[0];
+    } else if (range === "custom") {
+      if (from) dateRange.from = from;
+      if (to) dateRange.to = to;
+    }
+    // "all" or no range = no date filter
+
+    const stats = await getEventStats(req.session.guildId, dateRange);
+    res.render("index", {
+      stats,
+      activeRange: range || "all",
+      customFrom: from || "",
+      customTo: to || "",
+    });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    res.render("error", { message: "Failed to load dashboard." });
+  }
+});
+
+router.get("/events", requireAuth, async (req, res) => {
+  try {
+    const status = req.query.status || null;
+    const perPage = req.query.per_page === "all" ? null : parseInt(req.query.per_page) || 100;
+    const page = parseInt(req.query.page) || 1;
+    const sort = req.query.sort || "desc"; // "asc" or "desc" for start_date
+
+    const { events, totalCount } = await getEvents(req.session.guildId, status, {
+      limit: perPage,
+      offset: perPage ? (page - 1) * perPage : 0,
+      sortDir: sort,
+    });
+
+    const totalPages = perPage ? Math.ceil(totalCount / perPage) : 1;
+
+    res.render("events", {
+      events,
+      statusFilter: status || "all",
+      perPage: perPage || "all",
+      page,
+      totalPages,
+      totalCount,
+      sort,
+    });
+  } catch (error) {
+    console.error("Events list error:", error);
+    res.render("error", { message: "Failed to load events." });
+  }
+});
+
+router.get("/event/:id", requireAuth, async (req, res) => {
+  try {
+    const event = await getEvent(req.session.guildId, req.params.id);
+    if (!event) {
+      return res.render("error", { message: "Event not found." });
+    }
+    res.render("event-detail", { event });
+  } catch (error) {
+    console.error("Event detail error:", error);
+    res.render("error", { message: "Failed to load event." });
+  }
+});
+
+router.get("/dms", requireAuth, async (req, res) => {
+  try {
+    const hasTable = await hasEventsTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
+    }
+
+    const { range, from, to } = req.query;
+    const dateRange = {};
+    if (range === "30d") {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      dateRange.from = d.toISOString().split("T")[0];
+    } else if (range === "1y") {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      dateRange.from = d.toISOString().split("T")[0];
+    } else if (range === "custom") {
+      if (from) dateRange.from = from;
+      if (to) dateRange.to = to;
+    }
+
+    const dmStats = await getDmStats(req.session.guildId, dateRange);
+    res.render("dms", {
+      dmStats,
+      activeRange: range || "all",
+      customFrom: from || "",
+      customTo: to || "",
+    });
+  } catch (error) {
+    console.error("DMs page error:", error);
+    res.render("error", { message: "Failed to load DM stats." });
+  }
+});
+
+router.get("/active-pcs", requireAuth, async (req, res) => {
+  try {
+    const hasTable = await hasEventsTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
+    }
+    const stats = await getActivePcStats(req.session.guildId);
+    res.render("active-pcs", { stats });
+  } catch (error) {
+    console.error("Active PCs error:", error);
+    res.render("error", { message: "Failed to load active PC stats." });
+  }
+});
+
+router.get("/select-guild", requireLogin, async (req, res) => {
+  try {
+    const registeredGuildIds = await getRegisteredGuilds();
+    const userGuilds = req.session.userGuilds || [];
+    const availableGuilds = userGuilds.filter((g) =>
+      registeredGuildIds.includes(g.id)
+    );
+
+    if (availableGuilds.length === 1) {
+      req.session.guildId = availableGuilds[0].id;
+      req.session.guildName = availableGuilds[0].name;
+      return res.redirect("/");
+    }
+
+    res.render("select-guild", { guilds: availableGuilds });
+  } catch (error) {
+    console.error("Guild selection error:", error);
+    res.render("error", { message: "Failed to load guilds." });
+  }
+});
+
+router.post("/select-guild", requireLogin, express.urlencoded({ extended: false }), (req, res) => {
+  const { guildId, guildName } = req.body;
+  req.session.guildId = guildId;
+  req.session.guildName = guildName;
+  res.redirect("/");
+});
+
+module.exports = router;

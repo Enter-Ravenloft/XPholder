@@ -1,0 +1,113 @@
+<%- include('partials/head', { title: 'Events' }) %>
+<%- include('partials/nav') %>
+
+<%
+  function buildUrl(overrides) {
+    const p = {
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      per_page: perPage,
+      page: page,
+      sort: sort,
+      ...overrides,
+    };
+    const qs = Object.entries(p).filter(([,v]) => v !== undefined && v !== 'all' && v !== 1 && v !== 'desc')
+      .map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+    return '/events' + (qs ? '?' + qs : '');
+  }
+%>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
+    <h1 class="text-2xl font-bold">Events <span class="text-lg text-gray-400 font-normal">(<%= totalCount %>)</span></h1>
+    <div class="flex flex-wrap items-center gap-4">
+      <!-- Status filter -->
+      <div class="flex space-x-2">
+        <a href="<%= buildUrl({ status: undefined, page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= statusFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">All</a>
+        <a href="<%= buildUrl({ status: 'active', page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= statusFilter === 'active' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Active</a>
+        <a href="<%= buildUrl({ status: 'completed', page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= statusFilter === 'completed' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Completed</a>
+      </div>
+      <!-- Per page -->
+      <div class="flex items-center space-x-2 text-sm text-gray-400">
+        <span>Show:</span>
+        <% [100, 250, 500, 'all'].forEach(opt => { %>
+          <a href="<%= buildUrl({ per_page: opt, page: 1 }) %>" class="px-2 py-1 rounded <%= String(perPage) === String(opt) ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>"><%= opt %></a>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <% if (events.length === 0) { %>
+    <p class="text-gray-400">No events found.</p>
+  <% } else { %>
+  <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
+          <th class="px-4 py-3">Name</th>
+          <th class="px-4 py-3">Type</th>
+          <th class="px-4 py-3">Tier</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3">
+            <a href="<%= buildUrl({ sort: sort === 'asc' ? 'desc' : 'asc', page: 1 }) %>" class="hover:text-white inline-flex items-center gap-1">
+              Start
+              <% if (sort === 'asc') { %>
+                <span>&#9650;</span>
+              <% } else { %>
+                <span>&#9660;</span>
+              <% } %>
+            </a>
+          </th>
+          <th class="px-4 py-3">End</th>
+          <th class="px-4 py-3">Days</th>
+          <th class="px-4 py-3">PCs</th>
+          <th class="px-4 py-3">DMs</th>
+          <th class="px-4 py-3">XP Reward</th>
+          <th class="px-4 py-3">GP Reward</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% events.forEach(event => { %>
+        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+          <td class="px-4 py-3">
+            <a href="/event/<%= event.event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= event.name %></a>
+          </td>
+          <td class="px-4 py-3 text-sm"><%= event.event_type %></td>
+          <td class="px-4 py-3 text-sm"><%= event.tier %></td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-1 rounded-full <%= event.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300' %>">
+              <%= event.status %>
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= event.start_date ? event.start_date.toISOString().split('T')[0] : '' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= event.end_date ? event.end_date.toISOString().split('T')[0] : '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= Math.ceil(((event.end_date || new Date()) - event.start_date) / (1000 * 60 * 60 * 24)) %></td>
+          <td class="px-4 py-3 text-sm"><%= event.participant_count %></td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= event.dm_names || '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= event.xp_reward != null ? event.xp_reward : '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400"><%= event.gp_reward != null ? event.gp_reward : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+  <div class="flex items-center justify-between mt-4">
+    <p class="text-sm text-gray-400">
+      Page <%= page %> of <%= totalPages %>
+    </p>
+    <div class="flex space-x-2">
+      <% if (page > 1) { %>
+        <a href="<%= buildUrl({ page: page - 1 }) %>" class="px-3 py-1 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600">&larr; Prev</a>
+      <% } %>
+      <% if (page < totalPages) { %>
+        <a href="<%= buildUrl({ page: page + 1 }) %>" class="px-3 py-1 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600">Next &rarr;</a>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+  <% } %>
+</main>
+
+<%- include('partials/foot') %>

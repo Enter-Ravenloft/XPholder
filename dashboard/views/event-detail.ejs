@@ -1,0 +1,93 @@
+<%- include('partials/head', { title: event.name }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <a href="/events" class="text-sm text-gray-400 hover:text-gray-200 mb-4 inline-block">&larr; Back to Events</a>
+
+  <div class="flex items-center space-x-3 mb-6">
+    <h1 class="text-2xl font-bold"><%= event.name %></h1>
+    <span class="text-xs px-2 py-1 rounded-full <%= event.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300' %>">
+      <%= event.status %>
+    </span>
+  </div>
+
+  <!-- Event Info -->
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Type</p>
+      <p class="text-lg font-semibold"><%= event.event_type %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Tier</p>
+      <p class="text-lg font-semibold"><%= event.tier %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Start Date</p>
+      <p class="text-lg font-semibold"><%= event.start_date ? event.start_date.toISOString().split('T')[0] : '—' %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">End Date</p>
+      <p class="text-lg font-semibold"><%= event.end_date ? event.end_date.toISOString().split('T')[0] : 'Ongoing' %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">XP Reward</p>
+      <p class="text-lg font-semibold"><%= event.xp_reward != null ? event.xp_reward : '—' %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">GP Reward</p>
+      <p class="text-lg font-semibold"><%= event.gp_reward != null ? event.gp_reward : '—' %></p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- DMs -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">DMs (<%= event.dms.length %>)</h2>
+      <% if (event.dms.length === 0) { %>
+        <p class="text-gray-400">No DMs assigned.</p>
+      <% } else { %>
+        <ul class="space-y-2">
+          <% event.dms.forEach(dm => { %>
+          <li class="flex items-center justify-between">
+            <span><%= dm.username || dm.user_id %></span>
+            <% if (dm.is_primary) { %>
+              <span class="text-xs px-2 py-1 rounded-full bg-indigo-900 text-indigo-300">Primary</span>
+            <% } %>
+          </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+
+    <!-- Participants -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Participants (<%= event.participants.length %>)</h2>
+      <% if (event.participants.length === 0) { %>
+        <p class="text-gray-400">No participants yet.</p>
+      <% } else { %>
+      <table class="w-full text-left">
+        <thead>
+          <tr class="text-gray-400 text-sm border-b border-gray-700">
+            <th class="pb-2">Character</th>
+            <th class="pb-2">Starting Level</th>
+            <th class="pb-2">Starting XP</th>
+            <th class="pb-2">Current XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% event.participants.forEach(p => { %>
+          <tr class="border-b border-gray-700/50">
+            <td class="py-2"><%= p.character_name %></td>
+            <td class="py-2"><%= p.starting_level %></td>
+            <td class="py-2"><%= Math.floor(p.starting_xp) %></td>
+            <td class="py-2"><%= Math.floor(p.current_xp) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+</main>
+
+<%- include('partials/foot') %>
