@@ -1,6 +1,8 @@
 services:
   bot:
-    build: .
+    build:
+      context: .
+      target: bot
     env_file: .env
     environment:
       - NODE_ENV=test
@@ -14,7 +16,9 @@ services:
     restart: unless-stopped
 
   dashboard:
-    build: ./dashboard
+    build:
+      context: .
+      target: dashboard
     env_file: .env
     environment:
       - NODE_ENV=test
