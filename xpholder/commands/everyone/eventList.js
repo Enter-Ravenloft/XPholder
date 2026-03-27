@@ -24,6 +24,17 @@ module.exports = {
         .setRequired(false)
     ),
   async execute(guildService, interaction) {
+    if (
+      !guildService.isMod(interaction.member._roles) &&
+      interaction.user.id != interaction.guild.ownerId &&
+      !guildService.isDev(interaction.member._roles)
+    ) {
+      await interaction.editReply(
+        "Sorry, you do not have the right role to use this command."
+      );
+      return;
+    }
+
     const statusFilter = interaction.options.getString("status") || "active";
     const status = statusFilter === "all" ? null : statusFilter;
 
