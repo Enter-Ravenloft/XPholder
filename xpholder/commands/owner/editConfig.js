@@ -95,6 +95,22 @@ module.exports = {
                 {name: "Linear", value: "linear"}
             )
             .setRequired(false))
+        .addRoleOption(option =>
+            option.setName("inactive_60_role")
+                .setDescription("Role for 60-day inactive members")
+                .setRequired(false))
+        .addRoleOption(option =>
+            option.setName("inactive_90_role")
+                .setDescription("Role for 90-day inactive members")
+                .setRequired(false))
+        .addRoleOption(option =>
+            option.setName("inactive_180_role")
+                .setDescription("Role for 180-day inactive members")
+                .setRequired(false))
+        .addRoleOption(option =>
+            option.setName("inactive_365_role")
+                .setDescription("Role for 1-year inactive members")
+                .setRequired(false))
         .addBooleanOption(option => option
             .setName("public")
             .setDescription("Show This Command To Everyone?")
@@ -135,6 +151,10 @@ module.exports = {
         const xpShareRole = interaction.options.getRole("xp_share_role");
         const xpPerPostDivisor = interaction.options.getInteger("xp_per_post_divisor");
         const xpPerPostFormula = interaction.options.getString("xp_per_post_formula");
+        const inactive60Role = interaction.options.getRole("inactive_60_role");
+        const inactive90Role = interaction.options.getRole("inactive_90_role");
+        const inactive180Role = interaction.options.getRole("inactive_180_role");
+        const inactive365Role = interaction.options.getRole("inactive_365_role");
 
         /*
         -------
@@ -165,6 +185,10 @@ module.exports = {
         if (xpShareRole) { config["xpShareRoleId"] = xpShareRole.id; }
         if (xpPerPostDivisor) { config["xpPerPostDivisor"] = xpPerPostDivisor; }
         if (xpPerPostFormula) { config["xpPerPostFormula"] = xpPerPostFormula; }
+        if (inactive60Role) { config["inactiveRole60Id"] = inactive60Role.id; }
+        if (inactive90Role) { config["inactiveRole90Id"] = inactive90Role.id; }
+        if (inactive180Role) { config["inactiveRole180Id"] = inactive180Role.id; }
+        if (inactive365Role) { config["inactiveRole365Id"] = inactive365Role.id; }
 
         /*
         ---------------
