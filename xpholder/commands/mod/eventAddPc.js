@@ -74,6 +74,8 @@ module.exports = {
       await guildService.addEventParticipant(
         eventId,
         characterId,
+        player.id,
+        character.name,
         parseInt(levelInfo.level),
         character.xp
       );
