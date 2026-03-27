@@ -428,7 +428,7 @@ class guildService {
   }
   async createEventsTable() {
     await this.db.query(
-      `CREATE TABLE events (
+      `CREATE TABLE IF NOT EXISTS events (
         event_id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         event_type TEXT NOT NULL,
@@ -444,7 +444,7 @@ class guildService {
   }
   async createEventParticipantsTable() {
     await this.db.query(
-      `CREATE TABLE event_participants (
+      `CREATE TABLE IF NOT EXISTS event_participants (
         participant_id SERIAL PRIMARY KEY,
         event_id INTEGER NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
         character_id TEXT NOT NULL,
@@ -457,7 +457,7 @@ class guildService {
   }
   async createEventDmsTable() {
     await this.db.query(
-      `CREATE TABLE event_dms (
+      `CREATE TABLE IF NOT EXISTS event_dms (
         dm_id SERIAL PRIMARY KEY,
         event_id INTEGER NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
         user_id TEXT NOT NULL,
