@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
-const { getRegisteredGuilds, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats } = require("../db");
+const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats } = require("../db");
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -142,8 +142,28 @@ router.get("/select-guild", requireLogin, async (req, res) => {
     );
 
     if (availableGuilds.length === 1) {
-      req.session.guildId = availableGuilds[0].id;
-      req.session.guildName = availableGuilds[0].name;
+      const guild = availableGuilds[0];
+      const moderationRoleId = await getGuildConfig(guild.id, "moderationRoleId");
+
+      if (moderationRoleId) {
+        const DISCORD_API = "https://discord.com/api/v10";
+        const memberRes = await fetch(
+          `${DISCORD_API}/guilds/${guild.id}/members/${req.session.user.id}`,
+          { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` } }
+        );
+
+        if (memberRes.ok) {
+          const member = await memberRes.json();
+          if (!member.roles.includes(moderationRoleId)) {
+            return res.render("unauthorized");
+          }
+        } else {
+          return res.render("unauthorized");
+        }
+      }
+
+      req.session.guildId = guild.id;
+      req.session.guildName = guild.name;
       return res.redirect("/");
     }
 
@@ -154,8 +174,29 @@ router.get("/select-guild", requireLogin, async (req, res) => {
   }
 });
 
-router.post("/select-guild", requireLogin, express.urlencoded({ extended: false }), (req, res) => {
+router.post("/select-guild", requireLogin, express.urlencoded({ extended: false }), async (req, res) => {
   const { guildId, guildName } = req.body;
+
+  // Check if user has mod role for this guild
+  const moderationRoleId = await getGuildConfig(guildId, "moderationRoleId");
+
+  if (moderationRoleId) {
+    const DISCORD_API = "https://discord.com/api/v10";
+    const memberRes = await fetch(
+      `${DISCORD_API}/guilds/${guildId}/members/${req.session.user.id}`,
+      { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` } }
+    );
+
+    if (memberRes.ok) {
+      const member = await memberRes.json();
+      if (!member.roles.includes(moderationRoleId)) {
+        return res.render("unauthorized");
+      }
+    } else {
+      return res.render("unauthorized");
+    }
+  }
+
   req.session.guildId = guildId;
   req.session.guildName = guildName;
   res.redirect("/");

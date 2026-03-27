@@ -175,6 +175,15 @@ async function getEvent(guildId, eventId) {
   };
 }
 
+async function getGuildConfig(guildId, key) {
+  const schema = `guild${guildId}`;
+  const res = await pool.query(
+    `SELECT value FROM ${schema}.config WHERE name = $1;`,
+    [key]
+  );
+  return res.rows.length > 0 ? res.rows[0].value : null;
+}
+
 async function hasEventsTable(guildId) {
   const schema = `guild${guildId}`;
   const res = await pool.query(
@@ -372,4 +381,4 @@ async function getDmStats(guildId, dateRange = {}) {
   return dmRows;
 }
 
-module.exports = { pool, getRegisteredGuilds, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats };
