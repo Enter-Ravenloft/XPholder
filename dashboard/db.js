@@ -155,9 +155,17 @@ async function getEvent(guildId, eventId) {
   if (eventRes.rows.length === 0) return null;
 
   const participantRes = await pool.query(
-    `SELECT ep.*, c.name as character_name, c.player_id, c.xp as current_xp
+    `SELECT ep.*,
+       COALESCE(ep.character_name, c.name) as character_name,
+       COALESCE(ep.player_id, c.player_id) as player_id,
+       c.xp as current_xp,
+       p.username,
+       p.display_name,
+       p.is_member,
+       p.inactive_days
      FROM ${schema}.event_participants ep
-     JOIN ${schema}.characters c ON ep.character_id = c.character_id
+     LEFT JOIN ${schema}.characters c ON ep.character_id = c.character_id
+     LEFT JOIN ${schema}.players p ON COALESCE(ep.player_id, c.player_id) = p.player_id
      WHERE ep.event_id = $1
      ORDER BY ep.joined_at;`,
     [eventId]
@@ -293,23 +301,31 @@ async function getActivePcStats(guildId) {
   const totalPcs = rows.reduce((s, r) => s + r.active_pcs, 0);
   const totalInEvents = rows.reduce((s, r) => s + r.in_events, 0);
 
-  // Total players (distinct player_ids)
-  const playersRes = await pool.query(
-    `SELECT COUNT(DISTINCT player_id) as total_players FROM ${schema}.characters;`
-  );
-  const totalPlayers = parseInt(playersRes.rows[0].total_players);
+  // Total players and active members from players table
+  let totalPlayers = 0;
+  let totalActiveMembers = 0;
+  if (await hasPlayersTable(guildId)) {
+    const playersRes = await pool.query(
+      `SELECT
+        COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
+        COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days IS NULL) as active_members
+       FROM ${schema}.players;`
+    );
+    totalPlayers = parseInt(playersRes.rows[0].total_members) || 0;
+    totalActiveMembers = parseInt(playersRes.rows[0].active_members) || 0;
+  }
 
   // Players with at least one character in an active event
   const activePlayers = await pool.query(
-    `SELECT COUNT(DISTINCT c.player_id) as active_players
+    `SELECT COUNT(DISTINCT COALESCE(ep.player_id, c.player_id)) as active_players
      FROM ${schema}.event_participants ep
      JOIN ${schema}.events e ON ep.event_id = e.event_id
-     JOIN ${schema}.characters c ON ep.character_id = c.character_id
+     LEFT JOIN ${schema}.characters c ON ep.character_id = c.character_id
      WHERE e.status = 'active';`
   );
-  const totalActivePlayers = parseInt(activePlayers.rows[0].active_players);
+  const totalActivePlayers = parseInt(activePlayers.rows[0].active_players) || 0;
 
-  return { rows, totalPcs, totalInEvents, totalPlayers, totalActivePlayers };
+  return { rows, totalPcs, totalInEvents, totalPlayers, totalActivePlayers, totalActiveMembers };
 }
 
 async function getDmStats(guildId, dateRange = {}) {
@@ -381,4 +397,44 @@ async function getDmStats(guildId, dateRange = {}) {
   return dmRows;
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats };
+async function hasPlayersTable(guildId) {
+  const schema = `guild${guildId}`;
+  const res = await pool.query(
+    `SELECT EXISTS (
+      SELECT FROM information_schema.tables
+      WHERE table_schema = $1 AND table_name = 'players'
+    );`,
+    [schema]
+  );
+  return res.rows[0].exists;
+}
+
+async function getPlayerStats(guildId) {
+  const schema = `guild${guildId}`;
+
+  const exists = await hasPlayersTable(guildId);
+  if (!exists) {
+    return {
+      total_members: "0", active_members: "0",
+      inactive_60: "0", inactive_90: "0",
+      inactive_180: "0", inactive_365: "0",
+      departed_members: "0"
+    };
+  }
+
+  const res = await pool.query(
+    `SELECT
+      COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days IS NULL) as active_members,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 60) as inactive_60,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 90) as inactive_90,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 180) as inactive_180,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 365) as inactive_365,
+      COUNT(*) FILTER (WHERE is_member = FALSE) as departed_members
+     FROM ${schema}.players;`
+  );
+
+  return res.rows[0];
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats };

@@ -4,6 +4,29 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <h1 class="text-2xl font-bold mb-8">Active PCs</h1>
 
+  <!-- Player Activity -->
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-4">Server Members</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold"><%= playerStats.total_members %></div>
+        <div class="text-sm text-gray-400">Total Members</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-green-400"><%= playerStats.active_members %></div>
+        <div class="text-sm text-gray-400">Active</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-yellow-400"><%= parseInt(playerStats.inactive_60) + parseInt(playerStats.inactive_90) %></div>
+        <div class="text-sm text-gray-400">Inactive (60-90d)</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-red-400"><%= parseInt(playerStats.inactive_180) + parseInt(playerStats.inactive_365) %></div>
+        <div class="text-sm text-gray-400">Inactive (180d+)</div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid grid-cols-2 gap-4 mb-8">
     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
       <p class="text-sm text-gray-400">Total Active PCs</p>

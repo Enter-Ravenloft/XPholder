@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
-const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats } = require("../db");
+const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, getPlayerStats } = require("../db");
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -126,7 +126,8 @@ router.get("/active-pcs", requireAuth, async (req, res) => {
       return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
     }
     const stats = await getActivePcStats(req.session.guildId);
-    res.render("active-pcs", { stats });
+    const playerStats = await getPlayerStats(req.session.guildId);
+    res.render("active-pcs", { stats, playerStats });
   } catch (error) {
     console.error("Active PCs error:", error);
     res.render("error", { message: "Failed to load active PC stats." });

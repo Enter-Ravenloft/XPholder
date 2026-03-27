@@ -69,6 +69,7 @@
         <thead>
           <tr class="text-gray-400 text-sm border-b border-gray-700">
             <th class="pb-2">Character</th>
+            <th class="pb-2">Player</th>
             <th class="pb-2">Starting Level</th>
             <th class="pb-2">Starting XP</th>
             <th class="pb-2">Current XP</th>
@@ -78,6 +79,15 @@
           <% event.participants.forEach(p => { %>
           <tr class="border-b border-gray-700/50">
             <td class="py-2"><%= p.character_name %></td>
+            <td class="py-2">
+              <% if (p.display_name || p.username) { %>
+                <%= p.display_name || p.username %>
+                <% if (p.is_member === false) { %><span class="text-xs text-gray-500 ml-1">(left)</span><% } %>
+                <% if (p.inactive_days) { %><span class="text-xs text-yellow-500 ml-1">(<%= p.inactive_days %>d inactive)</span><% } %>
+              <% } else { %>
+                <span class="text-gray-500">Unknown</span>
+              <% } %>
+            </td>
             <td class="py-2"><%= p.starting_level %></td>
             <td class="py-2"><%= Math.floor(p.starting_xp) %></td>
             <td class="py-2"><%= Math.floor(p.current_xp) %></td>
