@@ -151,6 +151,37 @@ class guildService {
     return res;
   }
 
+  async upsertPlayer(playerId, username, displayName, inactiveDays) {
+    await this.db.query(
+      `INSERT INTO ${this.schema}.players (player_id, username, display_name, is_member, inactive_days, last_seen)
+       VALUES ($1, $2, $3, TRUE, $4, NOW())
+       ON CONFLICT (player_id) DO UPDATE SET
+         username = $2,
+         display_name = $3,
+         is_member = TRUE,
+         inactive_days = $4,
+         last_seen = NOW();`,
+      [playerId, username, displayName, inactiveDays]
+    );
+  }
+
+  async markAbsentMembers(presentPlayerIds) {
+    if (presentPlayerIds.length === 0) return;
+    const placeholders = presentPlayerIds.map((_, i) => `$${i + 1}`).join(", ");
+    await this.db.query(
+      `UPDATE ${this.schema}.players SET is_member = FALSE WHERE player_id NOT IN (${placeholders});`,
+      presentPlayerIds
+    );
+  }
+
+  async getPlayer(playerId) {
+    const res = await this.db.query(
+      `SELECT * FROM ${this.schema}.players WHERE player_id = $1;`,
+      [playerId]
+    );
+    return res.rows[0];
+  }
+
   /*
     ---------------
     UPDATING TABLES
@@ -350,6 +381,21 @@ class guildService {
     if (!doesCharacterTiersTableExist) {
       await this.createCharacterTiersTable();
     }
+    if (!(await this.tableExists("players"))) {
+      await this.createPlayersTable();
+    }
+    const inactiveRoleKeys = [
+      "inactiveRole60Id",
+      "inactiveRole90Id",
+      "inactiveRole180Id",
+      "inactiveRole365Id",
+    ];
+    for (const key of inactiveRoleKeys) {
+      await this.db.query(
+        `INSERT INTO ${this.schema}.config (name, value) VALUES ($1, '') ON CONFLICT (name) DO NOTHING;`,
+        [key]
+      );
+    }
     if (!(await this.tableExists("events"))) {
       await this.createEventsTable();
       await this.createEventParticipantsTable();
@@ -361,6 +407,12 @@ class guildService {
       );
       await this.db.query(
         `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS gp_reward INTEGER;`
+      );
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS player_id TEXT;`
+      );
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS character_name TEXT;`
       );
     }
   }
@@ -378,6 +430,7 @@ class guildService {
     await this.createLevelsTable();
     await this.createRolesTable();
     await this.createCharacterTiersTable();
+    await this.createPlayersTable();
     await this.createEventsTable();
     await this.createEventParticipantsTable();
     await this.createEventDmsTable();
@@ -415,16 +468,29 @@ class guildService {
   }
   async createCharacterTiersTable() {
     const res = await this.db.query(
-      `CREATE TABLE 
-        character_tiers ( 
+      `CREATE TABLE
+        character_tiers (
             tier_id SERIAL PRIMARY KEY,
-            role_id TEXT NOT NULL, 
+            role_id TEXT NOT NULL,
             minimum_level INTEGER NOT NULL,
             maximum_level INTEGER NOT NULL,
             xp_bonus INTEGER NOT NULL
         );`
     );
     return res;
+  }
+  async createPlayersTable() {
+    await this.db.query(
+      `CREATE TABLE IF NOT EXISTS players (
+        player_id TEXT PRIMARY KEY,
+        username TEXT,
+        display_name TEXT,
+        is_member BOOLEAN DEFAULT TRUE,
+        inactive_days INTEGER,
+        first_seen TIMESTAMP DEFAULT NOW(),
+        last_seen TIMESTAMP DEFAULT NOW()
+      );`
+    );
   }
   async createEventsTable() {
     await this.db.query(
@@ -448,6 +514,8 @@ class guildService {
         participant_id SERIAL PRIMARY KEY,
         event_id INTEGER NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
         character_id TEXT NOT NULL,
+        player_id TEXT,
+        character_name TEXT,
         starting_level INTEGER NOT NULL,
         starting_xp REAL NOT NULL,
         joined_at TIMESTAMP DEFAULT NOW(),
@@ -529,10 +597,10 @@ class guildService {
     );
   }
 
-  async addEventParticipant(eventId, characterId, startingLevel, startingXp) {
+  async addEventParticipant(eventId, characterId, playerId, characterName, startingLevel, startingXp) {
     await this.db.query(
-      `INSERT INTO ${this.schema}.event_participants (event_id, character_id, starting_level, starting_xp) VALUES ($1, $2, $3, $4);`,
-      [eventId, characterId, startingLevel, startingXp]
+      `INSERT INTO ${this.schema}.event_participants (event_id, character_id, player_id, character_name, starting_level, starting_xp) VALUES ($1, $2, $3, $4, $5, $6);`,
+      [eventId, characterId, playerId, characterName, startingLevel, startingXp]
     );
   }
 
@@ -545,9 +613,11 @@ class guildService {
 
   async getEventParticipants(eventId) {
     const res = await this.db.query(
-      `SELECT ep.*, c.name as character_name, c.player_id
+      `SELECT ep.*,
+         COALESCE(ep.character_name, c.name) as character_name,
+         COALESCE(ep.player_id, c.player_id) as player_id
        FROM ${this.schema}.event_participants ep
-       JOIN ${this.schema}.characters c ON ep.character_id = c.character_id
+       LEFT JOIN ${this.schema}.characters c ON ep.character_id = c.character_id
        WHERE ep.event_id = $1
        ORDER BY ep.joined_at;`,
       [eventId]
