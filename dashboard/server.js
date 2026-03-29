@@ -28,10 +28,20 @@ app.use(
   })
 );
 
-// Make user available to all templates
+// Make user and helpers available to all templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.guildId = req.session.guildId || null;
+  // Extract player name from Discord nickname (before delimiters like |, [, {, 《, ()
+  res.locals.playerName = (displayName, username) => {
+    if (!displayName && !username) return null;
+    const name = displayName || username;
+    return name
+      .split(/[|¦│[\]{}《》]/)[0]
+      .replace(/\s*\(.*$/, "")
+      .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿˢᵀᵁⱽᵂ]+.*$/, "")
+      .trim() || name;
+  };
   next();
 });
 
