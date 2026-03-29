@@ -222,10 +222,14 @@ async function getActivePcStats(guildId) {
     thresholds.push(cumulative);
   }
 
-  // Get all characters with their XP
-  const charsRes = await pool.query(
-    `SELECT character_id, xp FROM ${schema}.characters;`
-  );
+  // Get characters with their XP, excluding PCs owned by players inactive 90+ days
+  const hasPlayers = await hasPlayersTable(guildId);
+  const charsQuery = hasPlayers
+    ? `SELECT c.character_id, c.xp FROM ${schema}.characters c
+       LEFT JOIN ${schema}.players p ON c.player_id = p.player_id
+       WHERE p.player_id IS NULL OR p.inactive_days IS NULL OR p.inactive_days < 90;`
+    : `SELECT character_id, xp FROM ${schema}.characters;`;
+  const charsRes = await pool.query(charsQuery);
 
   // Compute level for each character
   function getLevel(xp) {
@@ -308,7 +312,7 @@ async function getActivePcStats(guildId) {
     const playersRes = await pool.query(
       `SELECT
         COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
-        COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days IS NULL) as active_members
+        COUNT(*) FILTER (WHERE is_member = TRUE AND (inactive_days IS NULL OR inactive_days < 90)) as active_members
        FROM ${schema}.players;`
     );
     totalPlayers = parseInt(playersRes.rows[0].total_members) || 0;
@@ -425,7 +429,7 @@ async function getPlayerStats(guildId) {
   const res = await pool.query(
     `SELECT
       COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days IS NULL) as active_members,
+      COUNT(*) FILTER (WHERE is_member = TRUE AND (inactive_days IS NULL OR inactive_days < 90)) as active_members,
       COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 60) as inactive_60,
       COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 90) as inactive_90,
       COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 180) as inactive_180,
