@@ -226,8 +226,8 @@ async function getActivePcStats(guildId) {
   const hasPlayers = await hasPlayersTable(guildId);
   const charsQuery = hasPlayers
     ? `SELECT c.character_id, c.xp FROM ${schema}.characters c
-       LEFT JOIN ${schema}.players p ON c.player_id = p.player_id
-       WHERE p.player_id IS NULL OR p.inactive_days IS NULL OR p.inactive_days < 90;`
+       JOIN ${schema}.players p ON c.player_id = p.player_id
+       WHERE p.is_member = TRUE AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
     : `SELECT character_id, xp FROM ${schema}.characters;`;
   const charsRes = await pool.query(charsQuery);
 
@@ -262,14 +262,23 @@ async function getActivePcStats(guildId) {
     }
   }
 
-  // Get PCs in active events, grouped by event tier
-  const activeRes = await pool.query(
-    `SELECT e.tier, COUNT(DISTINCT ep.character_id) as in_events
-     FROM ${schema}.event_participants ep
-     JOIN ${schema}.events e ON ep.event_id = e.event_id
-     WHERE e.status = 'active'
-     GROUP BY e.tier;`
-  );
+  // Get PCs in active events, grouped by event tier (only active players)
+  const activeQuery = hasPlayers
+    ? `SELECT e.tier, COUNT(DISTINCT ep.character_id) as in_events
+       FROM ${schema}.event_participants ep
+       JOIN ${schema}.events e ON ep.event_id = e.event_id
+       JOIN ${schema}.characters c ON ep.character_id = c.character_id
+       JOIN ${schema}.players p ON c.player_id = p.player_id
+       WHERE e.status = 'active'
+         AND p.is_member = TRUE
+         AND (p.inactive_days IS NULL OR p.inactive_days < 90)
+       GROUP BY e.tier;`
+    : `SELECT e.tier, COUNT(DISTINCT ep.character_id) as in_events
+       FROM ${schema}.event_participants ep
+       JOIN ${schema}.events e ON ep.event_id = e.event_id
+       WHERE e.status = 'active'
+       GROUP BY e.tier;`;
+  const activeRes = await pool.query(activeQuery);
   const inEventsByTier = {};
   for (const row of activeRes.rows) {
     inEventsByTier[row.tier] = parseInt(row.in_events);
@@ -319,13 +328,17 @@ async function getActivePcStats(guildId) {
     totalActiveMembers = parseInt(playersRes.rows[0].active_members) || 0;
   }
 
-  // Players with at least one character in an active event
+  // Active players (member, not inactive 90+) with at least one PC in an active event
   const activePlayers = await pool.query(
-    `SELECT COUNT(DISTINCT COALESCE(ep.player_id, c.player_id)) as active_players
+    `SELECT COUNT(DISTINCT p.player_id) as active_players
      FROM ${schema}.event_participants ep
      JOIN ${schema}.events e ON ep.event_id = e.event_id
-     LEFT JOIN ${schema}.characters c ON ep.character_id = c.character_id
-     WHERE e.status = 'active';`
+     JOIN ${schema}.players p ON COALESCE(ep.player_id, (
+       SELECT c.player_id FROM ${schema}.characters c WHERE c.character_id = ep.character_id
+     )) = p.player_id
+     WHERE e.status = 'active'
+       AND p.is_member = TRUE
+       AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
   );
   const totalActivePlayers = parseInt(activePlayers.rows[0].active_players) || 0;
 
@@ -345,6 +358,7 @@ async function getDmStats(guildId, dateRange = {}) {
       COUNT(*) FILTER (WHERE e.status = 'completed') as completed_events,
       COUNT(*) FILTER (WHERE e.status = 'active') as active_events,
       MAX(e.start_date) as latest_start,
+      MAX(e.end_date) FILTER (WHERE e.status = 'completed') as latest_end,
       -- durations for completed events only
       ARRAY_AGG(
         CASE WHEN e.status = 'completed' AND e.end_date IS NOT NULL
@@ -386,12 +400,20 @@ async function getDmStats(guildId, dateRange = {}) {
       ? Math.round(parseFloat(row.events_started) * parseFloat(meanDuration))
       : 0;
 
+    const activeCount = parseInt(row.active_events);
+    const daysSinceLastClose = activeCount > 0
+      ? 0
+      : row.latest_end
+        ? Math.ceil((new Date() - new Date(row.latest_end)) / (1000 * 60 * 60 * 24))
+        : null;
+
     return {
       username: row.username,
       latest_start: row.latest_start,
+      days_since_last_close: daysSinceLastClose,
       events_started: parseInt(row.events_started),
       completed_events: parseInt(row.completed_events),
-      active_events: parseInt(row.active_events),
+      active_events: activeCount,
       mean_duration: meanDuration,
       median_duration: medianDuration,
       event_days: eventDays,

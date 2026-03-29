@@ -32,12 +32,21 @@ app.use(
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.guildId = req.session.guildId || null;
-  // Extract player name from Discord nickname (before delimiters like |, [, {, 《, ()
+  // Extract player name from Discord nickname
+  // Splits on delimiters (|, [, {, 《, emoji) and strips annotations
   res.locals.playerName = (displayName, username) => {
     if (!displayName && !username) return null;
     const name = displayName || username;
-    return name
-      .split(/[|¦│[\]{}《》]/)[0]
+    // Split on brackets, pipes, and emoji — take the longest non-empty segment from the first parts
+    // If name starts with [, extract content inside first brackets
+    if (name.startsWith("[")) {
+      const bracketMatch = name.match(/^\[([^\]]+)\]/);
+      if (bracketMatch) return bracketMatch[1].trim();
+    }
+    const segments = name.split(/[|¦│[\]{}《》]|[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{2300}-\u{23FF}☃★♦♠♣♥✦✧❤♤]/u);
+    let raw = segments[0].trim();
+    if (!raw) raw = segments.find((s) => s.trim()) || name;
+    return raw
       .replace(/\s*\(.*$/, "")
       .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿˢᵀᵁⱽᵂ]+.*$/, "")
       .trim() || name;

@@ -47,6 +47,7 @@
         <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
           <th class="px-4 py-3">DM</th>
           <th class="px-4 py-3 text-right">Latest Start</th>
+          <th class="px-4 py-3 text-right">Days Since Last Close</th>
           <th class="px-4 py-3 text-right">Events Started</th>
           <th class="px-4 py-3 text-right">Completed</th>
           <th class="px-4 py-3 text-right">Active</th>
@@ -60,6 +61,7 @@
         <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
           <td class="px-4 py-3 font-semibold"><%= dm.username %></td>
           <td class="px-4 py-3 text-right text-sm text-gray-400"><%= dm.latest_start ? dm.latest_start.toISOString().split('T')[0] : '—' %></td>
+          <td class="px-4 py-3 text-right text-sm text-gray-400"><%= dm.days_since_last_close != null ? dm.days_since_last_close : '—' %></td>
           <td class="px-4 py-3 text-right"><%= dm.events_started %></td>
           <td class="px-4 py-3 text-right"><%= dm.completed_events %></td>
           <td class="px-4 py-3 text-right"><%= dm.active_events %></td>
@@ -72,6 +74,7 @@
       <tfoot>
         <tr class="border-t border-gray-600 bg-gray-800/80 font-bold">
           <td class="px-4 py-3">Total</td>
+          <td class="px-4 py-3"></td>
           <td class="px-4 py-3"></td>
           <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.events_started, 0) %></td>
           <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.completed_events, 0) %></td>

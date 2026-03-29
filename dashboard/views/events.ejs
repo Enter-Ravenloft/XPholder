@@ -39,7 +39,7 @@
   <% if (events.length === 0) { %>
     <p class="text-gray-400">No events found.</p>
   <% } else { %>
-  <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+  <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
     <table class="w-full text-left">
       <thead>
         <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
@@ -71,20 +71,20 @@
           <td class="px-4 py-3">
             <a href="/event/<%= event.event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= event.name %></a>
           </td>
-          <td class="px-4 py-3 text-sm"><%= event.event_type %></td>
-          <td class="px-4 py-3 text-sm"><%= event.tier %></td>
-          <td class="px-4 py-3">
+          <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.event_type %></td>
+          <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.tier %></td>
+          <td class="px-4 py-3 whitespace-nowrap">
             <span class="text-xs px-2 py-1 rounded-full <%= event.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300' %>">
               <%= event.status %>
             </span>
           </td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= event.start_date ? event.start_date.toISOString().split('T')[0] : '' %></td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= event.end_date ? event.end_date.toISOString().split('T')[0] : '—' %></td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= Math.ceil(((event.end_date || new Date()) - event.start_date) / (1000 * 60 * 60 * 24)) %></td>
-          <td class="px-4 py-3 text-sm"><%= event.participant_count %></td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= event.dm_names || '—' %></td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= event.xp_reward != null ? event.xp_reward : '—' %></td>
-          <td class="px-4 py-3 text-sm text-gray-400"><%= event.gp_reward != null ? event.gp_reward : '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.start_date ? event.start_date.toISOString().split('T')[0] : '' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.end_date ? event.end_date.toISOString().split('T')[0] : '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= Math.ceil(((event.end_date || new Date()) - event.start_date) / (1000 * 60 * 60 * 24)) %></td>
+          <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.participant_count %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.dm_names || '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.xp_reward != null ? event.xp_reward : '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.gp_reward != null ? event.gp_reward : '—' %></td>
         </tr>
         <% }) %>
       </tbody>

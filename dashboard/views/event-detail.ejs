@@ -48,11 +48,8 @@
       <% } else { %>
         <ul class="space-y-2">
           <% event.dms.forEach(dm => { %>
-          <li class="flex items-center justify-between">
+          <li>
             <span><%= dm.username || dm.user_id %></span>
-            <% if (dm.is_primary) { %>
-              <span class="text-xs px-2 py-1 rounded-full bg-indigo-900 text-indigo-300">Primary</span>
-            <% } %>
           </li>
           <% }) %>
         </ul>
