@@ -246,6 +246,7 @@ async function getActivePcStats(guildId) {
     { label: "11-13", min: 11, max: 13 },
     { label: "14-16", min: 14, max: 16 },
     { label: "17-20", min: 17, max: 20 },
+    { label: "Open", min: 1, max: 20 },
   ];
 
   // Count all characters per bracket

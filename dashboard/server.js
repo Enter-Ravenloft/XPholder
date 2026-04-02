@@ -32,6 +32,7 @@ app.use(
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.guildId = req.session.guildId || null;
+  res.locals.guildName = req.session.guildName || null;
   // Extract player name from Discord nickname
   // Splits on delimiters (|, [, {, 《, emoji) and strips annotations
   res.locals.playerName = (displayName, username) => {

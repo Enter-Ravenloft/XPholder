@@ -5,7 +5,7 @@ const { XPHOLDER_COLOUR } = require("../../config.json");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("event_info")
-    .setDescription("Shows Details For An Event!")
+    .setDescription("Shows Details For An Event! [ MOD ]")
     .addStringOption((option) =>
       option
         .setName("event")
@@ -43,10 +43,15 @@ module.exports = {
     const dms = await guildService.getEventDms(eventId);
 
     const participantList = participants.length > 0
-      ? participants.map((p) => `${p.character_name} (Lvl ${p.starting_level}) - <@${p.player_id}>`).join("\n")
+      ? participants.map((p) => {
+          const level = p.starting_level > 1 ? ` (Lvl ${p.starting_level})` : "";
+          const player = p.player_id ? ` - <@${p.player_id}>` : "";
+          return `${p.character_name}${level}${player}`;
+        }).join("\n")
       : "None";
-    const dmList = dms.length > 0
-      ? dms.map((d) => `<@${d.user_id}>${d.is_primary ? " (Primary)" : ""}`).join(", ")
+    const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+    const dmList = sortedDms.length > 0
+      ? sortedDms.map((d) => d.username).join(", ")
       : "None";
 
     const statusEmoji = event.status === "active" ? "🟢" : "✅";

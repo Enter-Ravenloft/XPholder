@@ -73,7 +73,8 @@ module.exports = {
     const participantList = participants.length > 0
       ? participants.map((p) => `${p.character_name} (Lvl ${p.starting_level})`).join("\n")
       : "None";
-    const dmList = dms.map((d) => `${d.username}${d.is_primary ? " (Primary)" : ""}`).join(", ");
+    const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+    const dmList = sortedDms.map((d) => d.username).join(", ");
 
     const embed = new EmbedBuilder()
       .setTitle("Event Completed")

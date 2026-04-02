@@ -12,8 +12,8 @@
       </div>
       <div class="flex items-center space-x-4">
         <% if (user) { %>
-          <% if (guildId) { %>
-            <a href="/select-guild" class="text-sm text-gray-400 hover:text-gray-200" title="Switch server"><%= typeof guildName !== 'undefined' && guildName ? guildName : 'Select Server' %></a>
+          <% if (typeof guildName !== 'undefined' && guildName) { %>
+            <span class="text-sm text-gray-400"><%= guildName %></span>
           <% } %>
           <span class="text-sm text-gray-400"><%= user.global_name || user.username %></span>
           <a href="/auth/logout" class="text-sm text-red-400 hover:text-red-300">Logout</a>

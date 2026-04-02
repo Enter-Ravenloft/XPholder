@@ -605,10 +605,11 @@ class guildService {
   }
 
   async removeEventParticipant(eventId, characterId) {
-    await this.db.query(
-      `DELETE FROM ${this.schema}.event_participants WHERE event_id = $1 AND character_id = $2;`,
+    const res = await this.db.query(
+      `DELETE FROM ${this.schema}.event_participants WHERE event_id = $1 AND character_id = $2 RETURNING *;`,
       [eventId, characterId]
     );
+    return res.rows[0] || null;
   }
 
   async getEventParticipants(eventId) {

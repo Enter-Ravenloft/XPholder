@@ -21,7 +21,8 @@ module.exports = {
           { name: "Adventure", value: "Adventure" },
           { name: "Skirmish", value: "Skirmish" },
           { name: "Arena", value: "Arena" },
-          { name: "Discourse", value: "Discourse" }
+          { name: "Discourse", value: "Discourse" },
+          { name: "Arc Quest", value: "Arc Quest" }
         )
         .setRequired(true)
     )
@@ -35,7 +36,8 @@ module.exports = {
           { name: "8-10", value: "8-10" },
           { name: "11-13", value: "11-13" },
           { name: "14-16", value: "14-16" },
-          { name: "17-20", value: "17-20" }
+          { name: "17-20", value: "17-20" },
+          { name: "Open", value: "Open" }
         )
         .setRequired(true)
     )

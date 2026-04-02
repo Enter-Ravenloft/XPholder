@@ -61,13 +61,19 @@ module.exports = {
       return;
     }
 
-    await guildService.removeEventParticipant(eventId, characterId);
+    const removed = await guildService.removeEventParticipant(eventId, characterId);
+
+    if (!removed) {
+      await interaction.editReply("That character is not in this event.");
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle("PC Removed From Event")
       .setColor(XPHOLDER_RETIRE_COLOUR)
       .setFields(
         { inline: true, name: "Event", value: event.name },
+        { inline: true, name: "Character", value: removed.character_name || characterId },
         { inline: true, name: "Player", value: `${player}` }
       )
       .setTimestamp();
@@ -83,14 +89,21 @@ module.exports = {
         events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
       );
     } else if (focusedOption.name === "character") {
+      const eventOption = interaction.options.get("event");
       const playerOption = interaction.options.get("player");
-      if (!playerOption) return;
-      const characters = await guildService.getAllCharacters(playerOption.value);
-      const filtered = characters.filter((c) =>
-        c.name.toLowerCase().startsWith(focusedOption.value.toLowerCase())
+      if (!eventOption || !playerOption) return;
+      const participants = await guildService.getEventParticipants(parseInt(eventOption.value));
+      const playerParticipants = participants.filter(
+        (p) => p.player_id === playerOption.value
+      );
+      const filtered = playerParticipants.filter((p) =>
+        (p.character_name || "").toLowerCase().startsWith(focusedOption.value.toLowerCase())
       );
       await interaction.respond(
-        filtered.map((c) => ({ name: c.name, value: c.character_index }))
+        filtered.map((p) => {
+          const index = parseInt(p.character_id.split("-").pop());
+          return { name: p.character_name || p.character_id, value: index };
+        })
       );
     }
   },
