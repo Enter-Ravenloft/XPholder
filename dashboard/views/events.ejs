@@ -3,6 +3,7 @@
 
 <%
   function buildUrl(overrides) {
+    const defaults = { status: undefined, per_page: 100, page: 1, sort: 'desc' };
     const p = {
       status: statusFilter !== 'all' ? statusFilter : undefined,
       per_page: perPage,
@@ -10,7 +11,8 @@
       sort: sort,
       ...overrides,
     };
-    const qs = Object.entries(p).filter(([,v]) => v !== undefined && v !== 'all' && v !== 1 && v !== 'desc')
+    const qs = Object.entries(p)
+      .filter(([k, v]) => v !== undefined && v !== defaults[k])
       .map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
     return '/events' + (qs ? '?' + qs : '');
   }

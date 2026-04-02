@@ -251,15 +251,27 @@ async function getActivePcStats(guildId) {
     return 1;
   }
 
-  const brackets = [
-    { label: "3-4", min: 3, max: 4 },
-    { label: "5-7", min: 5, max: 7 },
-    { label: "8-10", min: 8, max: 10 },
-    { label: "11-13", min: 11, max: 13 },
-    { label: "14-16", min: 14, max: 16 },
-    { label: "17-20", min: 17, max: 20 },
-    { label: "Open", min: 1, max: 20 },
-  ];
+  // Load brackets from character_tiers if configured, otherwise derive from event tiers
+  const tiersRes = await pool.query(
+    `SELECT minimum_level, maximum_level FROM ${schema}.character_tiers ORDER BY minimum_level;`
+  );
+  let brackets;
+  if (tiersRes.rows.length > 0) {
+    brackets = tiersRes.rows.map((t) => ({
+      label: `${t.minimum_level}-${t.maximum_level}`,
+      min: t.minimum_level,
+      max: t.maximum_level,
+    }));
+  } else {
+    // Derive from tiers used in events (e.g. "3-4", "5-7")
+    const eventTiersRes = await pool.query(
+      `SELECT DISTINCT tier FROM ${schema}.events WHERE tier ~ '^\\d+-\\d+$' ORDER BY tier;`
+    );
+    brackets = eventTiersRes.rows.map((r) => {
+      const [min, max] = r.tier.split("-").map(Number);
+      return { label: r.tier, min, max };
+    }).sort((a, b) => a.min - b.min);
+  }
 
   // Count all characters per bracket
   const charsByBracket = {};
