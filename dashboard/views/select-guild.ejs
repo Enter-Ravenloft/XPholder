@@ -10,8 +10,8 @@
     <div class="space-y-3">
       <% guilds.forEach(guild => { %>
       <form method="POST" action="/select-guild">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="guildId" value="<%= guild.id %>">
-        <input type="hidden" name="guildName" value="<%= guild.name %>">
         <button type="submit" class="w-full flex items-center space-x-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg p-4 transition">
           <% if (guild.icon) { %>
             <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png?size=64" alt="" class="w-10 h-10 rounded-full">

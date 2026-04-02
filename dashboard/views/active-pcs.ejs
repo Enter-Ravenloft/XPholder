@@ -103,7 +103,7 @@
 </main>
 
 <script>
-  const data = <%- JSON.stringify(stats.rows) %>;
+  const data = <%- JSON.stringify(stats.rows).replace(/</g, '\\u003c') %>;
   Chart.defaults.color = '#9ca3af';
 
   new Chart(document.getElementById('pcChart'), {

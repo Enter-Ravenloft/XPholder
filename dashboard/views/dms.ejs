@@ -93,7 +93,7 @@
     document.getElementById('customRange').classList.toggle('hidden');
   });
 
-  const dmData = <%- JSON.stringify(dmStats) %>;
+  const dmData = <%- JSON.stringify(dmStats).replace(/</g, '\\u003c') %>;
   Chart.defaults.color = '#9ca3af';
 
   // Generate distinct colors

@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const session = require("express-session");
 const PgSession = require("connect-pg-simple")(session);
 const path = require("path");
@@ -27,6 +28,25 @@ app.use(
     cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }, // 1 week
   })
 );
+
+// Body parsing (needed before CSRF check)
+app.use(express.urlencoded({ extended: false }));
+
+// CSRF protection
+app.use((req, res, next) => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+  }
+  res.locals.csrfToken = req.session.csrfToken;
+
+  if (req.method === "POST") {
+    const token = req.body?._csrf || req.headers["x-csrf-token"];
+    if (token !== req.session.csrfToken) {
+      return res.status(403).render("error", { message: "Invalid or missing CSRF token." });
+    }
+  }
+  next();
+});
 
 // Make user and helpers available to all templates
 app.use((req, res, next) => {

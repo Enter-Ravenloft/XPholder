@@ -93,8 +93,8 @@
     document.getElementById('customRange').classList.toggle('hidden');
   });
 
-  const tierData = <%- JSON.stringify(stats.events_by_tier) %>;
-  const typeData = <%- JSON.stringify(stats.events_by_type) %>;
+  const tierData = <%- JSON.stringify(stats.events_by_tier).replace(/</g, '\\u003c') %>;
+  const typeData = <%- JSON.stringify(stats.events_by_type).replace(/</g, '\\u003c') %>;
 
   const chartDefaults = {
     color: '#9ca3af',

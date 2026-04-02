@@ -175,8 +175,20 @@ router.get("/select-guild", requireLogin, async (req, res) => {
   }
 });
 
-router.post("/select-guild", requireLogin, express.urlencoded({ extended: false }), async (req, res) => {
-  const { guildId, guildName } = req.body;
+router.post("/select-guild", requireLogin, async (req, res) => {
+  const { guildId } = req.body;
+
+  // Validate guildId is strictly numeric (prevents SQL injection via schema name)
+  if (!guildId || !/^\d+$/.test(guildId)) {
+    return res.render("error", { message: "Invalid guild." });
+  }
+
+  // Look up guild name from the user's known guilds, not from untrusted form body
+  const userGuilds = req.session.userGuilds || [];
+  const guild = userGuilds.find((g) => g.id === guildId);
+  if (!guild) {
+    return res.render("unauthorized");
+  }
 
   // Check if user has mod role for this guild
   const moderationRoleId = await getGuildConfig(guildId, "moderationRoleId");
@@ -199,7 +211,7 @@ router.post("/select-guild", requireLogin, express.urlencoded({ extended: false 
   }
 
   req.session.guildId = guildId;
-  req.session.guildName = guildName;
+  req.session.guildName = guild.name;
   res.redirect("/");
 });
 

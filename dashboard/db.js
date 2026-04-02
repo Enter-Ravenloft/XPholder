@@ -5,6 +5,12 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
 
+function validateGuildId(guildId) {
+  if (!/^\d+$/.test(guildId)) {
+    throw new Error(`Invalid guildId: ${guildId}`);
+  }
+}
+
 async function getRegisteredGuilds() {
   const res = await pool.query(
     `SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'guild%';`
@@ -29,6 +35,7 @@ function buildDateFilter(paramIndex, { from, to } = {}) {
 }
 
 async function getEventStats(guildId, dateRange = {}) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const { conditions, params } = buildDateFilter(1, dateRange);
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -103,6 +110,7 @@ async function getEventStats(guildId, dateRange = {}) {
 }
 
 async function getEvents(guildId, status = null, { limit = null, offset = 0, sortDir = "desc" } = {}) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const dir = sortDir === "asc" ? "ASC" : "DESC";
 
@@ -147,6 +155,7 @@ async function getEvents(guildId, status = null, { limit = null, offset = 0, sor
 }
 
 async function getEvent(guildId, eventId) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const eventRes = await pool.query(
     `SELECT * FROM ${schema}.events WHERE event_id = $1;`,
@@ -184,6 +193,7 @@ async function getEvent(guildId, eventId) {
 }
 
 async function getGuildConfig(guildId, key) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const res = await pool.query(
     `SELECT value FROM ${schema}.config WHERE name = $1;`,
@@ -193,6 +203,7 @@ async function getGuildConfig(guildId, key) {
 }
 
 async function hasEventsTable(guildId) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const res = await pool.query(
     `SELECT EXISTS (
@@ -205,6 +216,7 @@ async function hasEventsTable(guildId) {
 }
 
 async function getActivePcStats(guildId) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
 
   // Get the levels table to compute level from XP
@@ -347,6 +359,7 @@ async function getActivePcStats(guildId) {
 }
 
 async function getDmStats(guildId, dateRange = {}) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const { conditions, params } = buildDateFilter(1, dateRange);
   const eventWhere = conditions.length > 0 ? `WHERE e.${conditions.join(" AND e.")}` : "";
@@ -425,6 +438,7 @@ async function getDmStats(guildId, dateRange = {}) {
 }
 
 async function hasPlayersTable(guildId) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const res = await pool.query(
     `SELECT EXISTS (
@@ -437,6 +451,7 @@ async function hasPlayersTable(guildId) {
 }
 
 async function getPlayerStats(guildId) {
+  validateGuildId(guildId);
   const schema = `guild${guildId}`;
 
   const exists = await hasPlayersTable(guildId);
