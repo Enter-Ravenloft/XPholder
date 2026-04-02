@@ -22,10 +22,13 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(
   session({
     store: new PgSession({ pool, createTableIfMissing: true }),
-    secret: process.env.SESSION_SECRET || "xpholder-dev-secret",
+    secret: process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? (() => { throw new Error("SESSION_SECRET is required in production"); })() : "xpholder-dev-secret"),
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }, // 1 week
+    cookie: {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      secure: process.env.NODE_ENV === "production",
+    },
   })
 );
 

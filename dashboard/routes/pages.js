@@ -73,7 +73,11 @@ router.get("/events", requireAuth, async (req, res) => {
 
 router.get("/event/:id", requireAuth, async (req, res) => {
   try {
-    const event = await getEvent(req.session.guildId, req.params.id);
+    const eventId = parseInt(req.params.id);
+    if (isNaN(eventId)) {
+      return res.render("error", { message: "Invalid event ID." });
+    }
+    const event = await getEvent(req.session.guildId, eventId);
     if (!event) {
       return res.render("error", { message: "Event not found." });
     }

@@ -578,7 +578,7 @@ class guildService {
   async searchEvents(searchTerm, status = "active") {
     const res = await this.db.query(
       `SELECT * FROM ${this.schema}.events WHERE status = $1 AND LOWER(name) LIKE $2 ORDER BY name LIMIT 25;`,
-      [status, `%${searchTerm.toLowerCase()}%`]
+      [status, `%${searchTerm.toLowerCase().replace(/[%_\\]/g, "\\$&")}%`]
     );
     return res.rows;
   }

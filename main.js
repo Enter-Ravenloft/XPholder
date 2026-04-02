@@ -122,15 +122,17 @@ async function syncGuildPlayers(guild) {
   console.log(`Synced ${presentIds.length} players for guild ${guild.id}`);
 }
 
-client.once("ready", async () => {
+client.once("ready", () => {
   console.log("ready");
-  for (const [guildId, guild] of client.guilds.cache) {
-    try {
-      await syncGuildPlayers(guild);
-    } catch (err) {
-      console.error(`Failed to sync players for guild ${guildId}:`, err);
+  // Run player sync in the background so the bot can handle commands immediately
+  Promise.allSettled(
+    [...client.guilds.cache.values()].map((guild) => syncGuildPlayers(guild))
+  ).then((results) => {
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      console.error(`Player sync failed for ${failed.length} guild(s):`, failed.map((r) => r.reason));
     }
-  }
+  });
 });
 
 setInterval(async () => {

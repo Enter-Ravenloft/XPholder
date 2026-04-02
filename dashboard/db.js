@@ -18,16 +18,17 @@ async function getRegisteredGuilds() {
   return res.rows.map((r) => r.schema_name.replace("guild", ""));
 }
 
-function buildDateFilter(paramIndex, { from, to } = {}) {
+function buildDateFilter(paramIndex, { from, to } = {}, alias = "") {
+  const prefix = alias ? `${alias}.` : "";
   const conditions = [];
   const params = [];
   if (from) {
-    conditions.push(`start_date >= $${paramIndex}`);
+    conditions.push(`${prefix}start_date >= $${paramIndex}`);
     params.push(from);
     paramIndex++;
   }
   if (to) {
-    conditions.push(`start_date <= $${paramIndex}`);
+    conditions.push(`${prefix}start_date <= $${paramIndex}`);
     params.push(to);
     paramIndex++;
   }
@@ -40,6 +41,9 @@ async function getEventStats(guildId, dateRange = {}) {
   const { conditions, params } = buildDateFilter(1, dateRange);
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  const { conditions: joinConditions } = buildDateFilter(1, dateRange, "e");
+  const eventJoinWhere = joinConditions.length > 0 ? `WHERE ${joinConditions.join(" AND ")}` : "";
+
   const eventsRes = await pool.query(
     `SELECT
       COUNT(*) as total_events,
@@ -48,11 +52,6 @@ async function getEventStats(guildId, dateRange = {}) {
      FROM ${schema}.events ${where};`,
     params
   );
-
-  // For participant/DM stats, join through events to apply date filter
-  const eventJoinWhere = conditions.length > 0
-    ? `WHERE e.${conditions.join(" AND e.")}`
-    : "";
 
   const participantRes = await pool.query(
     `SELECT
@@ -373,8 +372,8 @@ async function getActivePcStats(guildId) {
 async function getDmStats(guildId, dateRange = {}) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
-  const { conditions, params } = buildDateFilter(1, dateRange);
-  const eventWhere = conditions.length > 0 ? `WHERE e.${conditions.join(" AND e.")}` : "";
+  const { conditions, params } = buildDateFilter(1, dateRange, "e");
+  const eventWhere = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   // Get all DMs with their event counts and durations
   const res = await pool.query(
