@@ -86,6 +86,9 @@ jspm_packages/
 # Lerna
 lerna-debug.log
 
+# Seed / sample data
+tooling/*.csv
+
 # System Files
 .DS_Store
 Thumbs.db

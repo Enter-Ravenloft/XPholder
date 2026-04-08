@@ -1,0 +1,163 @@
+<%- include('partials/head', { title: 'Active PCs' }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <h1 class="text-2xl font-bold mb-8">Active PCs</h1>
+
+  <!-- Player Activity -->
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-4">Server Members</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold"><%= playerStats.total_members %></div>
+        <div class="text-sm text-gray-400">Total Members</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-green-400"><%= playerStats.active_members %></div>
+        <div class="text-sm text-gray-400">Active</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-yellow-400"><%= parseInt(playerStats.inactive_60) + parseInt(playerStats.inactive_90) %></div>
+        <div class="text-sm text-gray-400">Inactive (60-90d)</div>
+      </div>
+      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="text-2xl font-bold text-red-400"><%= parseInt(playerStats.inactive_180) + parseInt(playerStats.inactive_365) %></div>
+        <div class="text-sm text-gray-400">Inactive (180d+)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 mb-8">
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <p class="text-sm text-gray-400">PCs in Events</p>
+      <p class="text-2xl font-bold">
+        <%= stats.totalInEvents %>
+        <span class="text-base font-normal text-gray-400">(<%= stats.totalPcs > 0 ? ((stats.totalInEvents / stats.totalPcs) * 100).toFixed(1) : '0.0' %>%)</span>
+      </p>
+      <p class="text-xs text-gray-500 mt-1">of <%= stats.totalPcs %> active player PCs</p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <p class="text-sm text-gray-400">Active Players in Events</p>
+      <p class="text-2xl font-bold">
+        <%= stats.totalActivePlayers %>
+        <span class="text-base font-normal text-gray-400">(<%= stats.totalActiveMembers > 0 ? ((stats.totalActivePlayers / stats.totalActiveMembers) * 100).toFixed(1) : '0.0' %>%)</span>
+      </p>
+      <p class="text-xs text-gray-500 mt-1">of <%= stats.totalActiveMembers %> active players</p>
+    </div>
+  </div>
+
+  <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden mb-8">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
+          <th class="px-4 py-3">Bracket</th>
+          <th class="px-4 py-3 text-right">Active PCs</th>
+          <th class="px-4 py-3 text-right"># in Events</th>
+          <th class="px-4 py-3 text-right">% in Events</th>
+          <th class="px-4 py-3 text-right">Days Since Last Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% stats.rows.forEach(row => { %>
+        <%
+          const pct = parseFloat(row.pct_in_events);
+          let pctClass = 'text-red-400';
+          if (pct >= 50) pctClass = 'text-green-400';
+          else if (pct >= 25) pctClass = 'text-yellow-400';
+        %>
+        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+          <td class="px-4 py-3 font-semibold"><%= row.bracket %></td>
+          <td class="px-4 py-3 text-right"><%= row.active_pcs %></td>
+          <td class="px-4 py-3 text-right"><%= row.in_events %></td>
+          <td class="px-4 py-3 text-right font-bold <%= pctClass %>"><%= row.pct_in_events %>%</td>
+          <td class="px-4 py-3 text-right text-gray-400"><%= row.days_since_last != null ? row.days_since_last : '—' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr class="border-t border-gray-600 bg-gray-800/80 font-bold">
+          <td class="px-4 py-3">Total</td>
+          <td class="px-4 py-3 text-right"><%= stats.totalPcs %></td>
+          <td class="px-4 py-3 text-right"><%= stats.totalInEvents %></td>
+          <td class="px-4 py-3 text-right"><%= stats.totalPcs > 0 ? ((stats.totalInEvents / stats.totalPcs) * 100).toFixed(1) : '0.0' %>%</td>
+          <td class="px-4 py-3 text-right text-gray-400">
+            <% const minDays = stats.rows.filter(r => r.days_since_last != null).map(r => r.days_since_last); %>
+            <%= minDays.length > 0 ? Math.min(...minDays) : '—' %>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Bar chart -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Active PCs vs In Events</h2>
+      <canvas id="pcChart"></canvas>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">% in Events by Bracket</h2>
+      <canvas id="pctChart"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+  const data = <%- JSON.stringify(stats.rows).replace(/</g, '\\u003c') %>;
+  Chart.defaults.color = '#9ca3af';
+
+  new Chart(document.getElementById('pcChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.bracket),
+      datasets: [
+        {
+          label: 'Active PCs',
+          data: data.map(d => d.active_pcs),
+          backgroundColor: '#6366f1',
+          borderRadius: 4,
+        },
+        {
+          label: 'In Events',
+          data: data.map(d => d.in_events),
+          backgroundColor: '#22c55e',
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#1f2937' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('pctChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.bracket),
+      datasets: [{
+        label: '% in Events',
+        data: data.map(d => parseFloat(d.pct_in_events)),
+        backgroundColor: data.map(d => {
+          const pct = parseFloat(d.pct_in_events);
+          if (pct >= 50) return '#22c55e';
+          if (pct >= 25) return '#eab308';
+          return '#ef4444';
+        }),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' }, grid: { color: '#1f2937' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+</script>
+
+<%- include('partials/foot') %>

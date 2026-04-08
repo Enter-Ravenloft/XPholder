@@ -1,0 +1,144 @@
+<%- include('partials/head', { title: 'Dashboard' }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-wrap items-center justify-between mb-8 gap-4">
+    <h1 class="text-2xl font-bold">Event Dashboard</h1>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/" class="px-3 py-1 rounded text-sm <%= activeRange === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">All Time</a>
+      <a href="/?range=30d" class="px-3 py-1 rounded text-sm <%= activeRange === '30d' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last 30 Days</a>
+      <a href="/?range=1y" class="px-3 py-1 rounded text-sm <%= activeRange === '1y' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last Year</a>
+      <button id="customToggle" class="px-3 py-1 rounded text-sm <%= activeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Custom</button>
+    </div>
+  </div>
+
+  <!-- Custom Date Range -->
+  <div id="customRange" class="<%= activeRange === 'custom' ? '' : 'hidden' %> mb-6">
+    <form method="GET" action="/" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="range" value="custom">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">From</label>
+        <input type="date" name="from" value="<%= customFrom %>" class="bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:border-indigo-500 focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">To</label>
+        <input type="date" name="to" value="<%= customTo %>" class="bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:border-indigo-500 focus:outline-none">
+      </div>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded text-sm">Apply</button>
+    </form>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Total Events</p>
+      <p class="text-3xl font-bold"><%= stats.total_events %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Active</p>
+      <p class="text-3xl font-bold text-green-400"><%= stats.active_events %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Completed</p>
+      <p class="text-3xl font-bold text-blue-400"><%= stats.completed_events %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Unique PCs</p>
+      <p class="text-3xl font-bold"><%= stats.total_participants %></p>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Avg Party Size</p>
+      <p class="text-3xl font-bold"><%= parseFloat(stats.avg_party_size).toFixed(1) %></p>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Events by Tier</h2>
+      <canvas id="tierChart"></canvas>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Events by Type</h2>
+      <canvas id="typeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Most Events Started -->
+  <% if (stats.top_dms.length > 0) { %>
+  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <h2 class="text-lg font-semibold mb-4">Most Events Started</h2>
+    <table class="w-full text-left">
+      <thead>
+        <tr class="text-gray-400 text-sm border-b border-gray-700">
+          <th class="pb-2">DM</th>
+          <th class="pb-2">Total Events</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% stats.top_dms.forEach(dm => { %>
+        <tr class="border-b border-gray-700/50">
+          <td class="py-2"><%= dm.username || dm.user_id %></td>
+          <td class="py-2"><%= dm.event_count %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</main>
+
+<script>
+  document.getElementById('customToggle').addEventListener('click', () => {
+    document.getElementById('customRange').classList.toggle('hidden');
+  });
+
+  const tierData = <%- JSON.stringify(stats.events_by_tier).replace(/</g, '\\u003c') %>;
+  const typeData = <%- JSON.stringify(stats.events_by_type).replace(/</g, '\\u003c') %>;
+
+  const chartDefaults = {
+    color: '#9ca3af',
+    borderColor: '#374151',
+  };
+  Chart.defaults.color = chartDefaults.color;
+
+  if (tierData.length > 0) {
+    new Chart(document.getElementById('tierChart'), {
+      type: 'bar',
+      data: {
+        labels: tierData.map(d => d.tier),
+        datasets: [{
+          label: 'Events',
+          data: tierData.map(d => d.count),
+          backgroundColor: '#6366f1',
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#1f2937' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  if (typeData.length > 0) {
+    new Chart(document.getElementById('typeChart'), {
+      type: 'doughnut',
+      data: {
+        labels: typeData.map(d => d.event_type),
+        datasets: [{
+          data: typeData.map(d => d.count),
+          backgroundColor: ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'],
+        }]
+      },
+      options: {
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+</script>
+
+<%- include('partials/foot') %>

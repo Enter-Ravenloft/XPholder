@@ -1,0 +1,164 @@
+<%- include('partials/head', { title: 'DMs' }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex flex-wrap items-center justify-between mb-8 gap-4">
+    <h1 class="text-2xl font-bold">DMs</h1>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/dms" class="px-3 py-1 rounded text-sm <%= activeRange === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">All Time</a>
+      <a href="/dms?range=30d" class="px-3 py-1 rounded text-sm <%= activeRange === '30d' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last 30 Days</a>
+      <a href="/dms?range=1y" class="px-3 py-1 rounded text-sm <%= activeRange === '1y' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last Year</a>
+      <button id="customToggle" class="px-3 py-1 rounded text-sm <%= activeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Custom</button>
+    </div>
+  </div>
+
+  <!-- Custom Date Range -->
+  <div id="customRange" class="<%= activeRange === 'custom' ? '' : 'hidden' %> mb-6">
+    <form method="GET" action="/dms" class="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="range" value="custom">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">From</label>
+        <input type="date" name="from" value="<%= customFrom %>" class="bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:border-indigo-500 focus:outline-none">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">To</label>
+        <input type="date" name="to" value="<%= customTo %>" class="bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:border-indigo-500 focus:outline-none">
+      </div>
+      <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded text-sm">Apply</button>
+    </form>
+  </div>
+
+  <!-- Donut Chart -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Events Started by DM</h2>
+      <canvas id="dmChart"></canvas>
+    </div>
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">Event Days by DM</h2>
+      <canvas id="daysChart"></canvas>
+    </div>
+  </div>
+
+  <!-- DM Table -->
+  <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
+          <th class="px-4 py-3">DM</th>
+          <th class="px-4 py-3 text-right">Latest Start</th>
+          <th class="px-4 py-3 text-right">Days Since Last Close</th>
+          <th class="px-4 py-3 text-right">Events Started</th>
+          <th class="px-4 py-3 text-right">Completed</th>
+          <th class="px-4 py-3 text-right">Active</th>
+          <th class="px-4 py-3 text-right">Mean Duration</th>
+          <th class="px-4 py-3 text-right">Median Duration</th>
+          <th class="px-4 py-3 text-right">Event Days</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% dmStats.forEach(dm => { %>
+        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+          <td class="px-4 py-3 font-semibold"><%= dm.username %></td>
+          <td class="px-4 py-3 text-right text-sm text-gray-400"><%= dm.latest_start ? dm.latest_start.toISOString().split('T')[0] : '—' %></td>
+          <td class="px-4 py-3 text-right text-sm text-gray-400"><%= dm.days_since_last_close != null ? dm.days_since_last_close : '—' %></td>
+          <td class="px-4 py-3 text-right"><%= dm.events_started %></td>
+          <td class="px-4 py-3 text-right"><%= dm.completed_events %></td>
+          <td class="px-4 py-3 text-right"><%= dm.active_events %></td>
+          <td class="px-4 py-3 text-right text-gray-400"><%= dm.mean_duration != null ? dm.mean_duration : '—' %></td>
+          <td class="px-4 py-3 text-right text-gray-400"><%= dm.median_duration != null ? dm.median_duration : '—' %></td>
+          <td class="px-4 py-3 text-right"><%= dm.event_days %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr class="border-t border-gray-600 bg-gray-800/80 font-bold">
+          <td class="px-4 py-3">Total</td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.events_started, 0) %></td>
+          <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.completed_events, 0) %></td>
+          <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.active_events, 0) %></td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3"></td>
+          <td class="px-4 py-3 text-right"><%= dmStats.reduce((s, d) => s + d.event_days, 0) %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</main>
+
+<script>
+  document.getElementById('customToggle').addEventListener('click', () => {
+    document.getElementById('customRange').classList.toggle('hidden');
+  });
+
+  const dmData = <%- JSON.stringify(dmStats).replace(/</g, '\\u003c') %>;
+  Chart.defaults.color = '#9ca3af';
+
+  // Generate distinct colors
+  const colors = [
+    '#6366f1', '#8b5cf6', '#a78bfa', '#22c55e', '#16a34a',
+    '#eab308', '#f59e0b', '#ef4444', '#f97316', '#06b6d4',
+    '#14b8a6', '#ec4899', '#d946ef', '#84cc16', '#0ea5e9',
+    '#f43f5e', '#10b981', '#8b5cf6', '#64748b', '#78716c',
+    '#fb923c', '#a3e635', '#2dd4bf', '#c084fc', '#fbbf24',
+    '#38bdf8', '#fb7185', '#4ade80', '#a78bfa', '#fcd34d',
+  ];
+
+  // Events started donut
+  const eventsData = dmData.filter(d => d.events_started > 0);
+  new Chart(document.getElementById('dmChart'), {
+    type: 'doughnut',
+    data: {
+      labels: eventsData.map(d => d.username),
+      datasets: [{
+        data: eventsData.map(d => d.events_started),
+        backgroundColor: colors.slice(0, eventsData.length),
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const total = ctx.dataset.data.reduce((s, v) => s + v, 0);
+              const pct = ((ctx.parsed / total) * 100).toFixed(1);
+              return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Event days donut
+  const daysData = dmData.filter(d => d.event_days > 0);
+  new Chart(document.getElementById('daysChart'), {
+    type: 'doughnut',
+    data: {
+      labels: daysData.map(d => d.username),
+      datasets: [{
+        data: daysData.map(d => d.event_days),
+        backgroundColor: colors.slice(0, daysData.length),
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const total = ctx.dataset.data.reduce((s, v) => s + v, 0);
+              const pct = ((ctx.parsed / total) * 100).toFixed(1);
+              return ` ${ctx.label}: ${ctx.parsed} days (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+</script>
+
+<%- include('partials/foot') %>
