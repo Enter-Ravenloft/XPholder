@@ -63,14 +63,15 @@ class guildService {
   }
 
   async tableExists(tableName) {
-    const res = await this.db.query(
-      format(
-        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '%I' AND table_name = '%I');",
-        this.schema,
-        tableName
-      )
+    const query = format(
+      "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = %L AND table_name = %L);",
+      this.schema,
+      tableName
     );
-    return res.rows[0].exists;
+    const res = await this.db.query(query);
+    const exists = res.rows[0].exists === true || res.rows[0].exists === 't';
+    console.log(`Table check: ${this.schema}.${tableName} exists = ${exists} (raw: ${res.rows[0].exists})`);
+    return exists;
   }
 
   /*
@@ -375,13 +376,19 @@ class guildService {
   }
 
   async updateRegistration() {
+    console.log(`Starting updateRegistration for schema: ${this.schema}`);
     const doesCharacterTiersTableExist = await this.tableExists(
       "character_tiers"
     );
+    console.log(`doesCharacterTiersTableExist: ${doesCharacterTiersTableExist}`);
     if (!doesCharacterTiersTableExist) {
+      console.log("Creating character_tiers table...");
       await this.createCharacterTiersTable();
     }
-    if (!(await this.tableExists("players"))) {
+    const doesPlayersTableExist = await this.tableExists("players");
+    console.log(`doesPlayersTableExist: ${doesPlayersTableExist}`);
+    if (!doesPlayersTableExist) {
+      console.log("Creating players table...");
       await this.createPlayersTable();
     }
     const inactiveRoleKeys = [
@@ -396,11 +403,15 @@ class guildService {
         [key]
       );
     }
-    if (!(await this.tableExists("events"))) {
+    const doesEventsTableExist = await this.tableExists("events");
+    console.log(`doesEventsTableExist: ${doesEventsTableExist}`);
+    if (!doesEventsTableExist) {
+      console.log("Creating events tables...");
       await this.createEventsTable();
       await this.createEventParticipantsTable();
       await this.createEventDmsTable();
     } else {
+      console.log("Events table already exists, ensuring columns exist...");
       // Add reward columns if they don't exist yet
       await this.db.query(
         `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS xp_reward INTEGER;`
@@ -415,6 +426,7 @@ class guildService {
         `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS character_name TEXT;`
       );
     }
+    console.log("Finished updateRegistration");
   }
 
   /*
