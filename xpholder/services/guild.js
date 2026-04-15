@@ -397,12 +397,21 @@ class guildService {
       "inactiveRole180Id",
       "inactiveRole365Id",
     ];
+    console.log(`Updating config with keys: ${inactiveRoleKeys}`);
     for (const key of inactiveRoleKeys) {
-      await this.db.query(
-        `INSERT INTO ${this.schema}.config (name, value) VALUES ($1, '') ON CONFLICT (name) DO NOTHING;`,
-        [key]
-      );
+      console.log(`Inserting/Updating config key: ${key}`);
+      try {
+        await this.db.query(
+          `INSERT INTO ${this.schema}.config (name, value) VALUES ($1, '') ON CONFLICT (name) DO NOTHING;`,
+          [key]
+        );
+        console.log(`Successfully processed config key: ${key}`);
+      } catch (e) {
+        console.error(`Error processing config key ${key}:`, e);
+        throw e;
+      }
     }
+    console.log("Finished updating config keys, moving to events check...");
     const doesEventsTableExist = await this.tableExists("events");
     console.log(`doesEventsTableExist: ${doesEventsTableExist}`);
     if (!doesEventsTableExist) {
