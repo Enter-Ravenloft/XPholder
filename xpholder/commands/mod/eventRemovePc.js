@@ -47,6 +47,10 @@ module.exports = {
     }
 
     const eventId = parseInt(interaction.options.getString("event"));
+    if (isNaN(eventId)) {
+      await interaction.editReply("Please pick an event from the autocomplete list.");
+      return;
+    }
     const player = interaction.options.getUser("player");
     const characterIndex = interaction.options.getInteger("character");
     const characterId = `${player.id}-${characterIndex}`;

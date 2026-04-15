@@ -38,8 +38,18 @@ module.exports = {
     }
 
     const eventId = parseInt(interaction.options.getString("event"));
+    if (isNaN(eventId)) {
+      await interaction.editReply("Please pick an event from the autocomplete list.");
+      return;
+    }
     const dm = interaction.options.getUser("dm");
-    const dmMember = await interaction.guild.members.fetch(dm.id);
+    let dmMember;
+    try {
+      dmMember = await interaction.guild.members.fetch(dm.id);
+    } catch {
+      await interaction.editReply("That user is no longer in the server.");
+      return;
+    }
 
     const event = await guildService.getEvent(eventId);
     if (!event) {

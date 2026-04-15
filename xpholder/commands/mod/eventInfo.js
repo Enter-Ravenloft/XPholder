@@ -32,6 +32,10 @@ module.exports = {
     }
 
     const eventId = parseInt(interaction.options.getString("event"));
+    if (isNaN(eventId)) {
+      await interaction.editReply("Please pick an event from the autocomplete list.");
+      return;
+    }
 
     const event = await guildService.getEvent(eventId);
     if (!event) {
