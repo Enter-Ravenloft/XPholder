@@ -610,6 +610,38 @@ class guildService {
     );
   }
 
+  async updateEvent(eventId, fields) {
+    const allowed = ["name", "event_type", "tier", "start_date"];
+    const setClauses = [];
+    const values = [];
+    let i = 1;
+    for (const col of allowed) {
+      if (fields[col] !== undefined) {
+        setClauses.push(`${col} = $${i++}`);
+        values.push(fields[col]);
+      }
+    }
+    if (setClauses.length === 0) return;
+    values.push(eventId);
+    await this.db.query(
+      `UPDATE ${this.schema}.events SET ${setClauses.join(", ")} WHERE event_id = $${i};`,
+      values
+    );
+  }
+
+  async setPrimaryDm(eventId, userId, username) {
+    await this.db.query(
+      `UPDATE ${this.schema}.event_dms SET is_primary = FALSE WHERE event_id = $1;`,
+      [eventId]
+    );
+    await this.db.query(
+      `INSERT INTO ${this.schema}.event_dms (event_id, user_id, username, is_primary)
+       VALUES ($1, $2, $3, TRUE)
+       ON CONFLICT (event_id, user_id) DO UPDATE SET is_primary = TRUE, username = EXCLUDED.username;`,
+      [eventId, userId, username]
+    );
+  }
+
   async addEventParticipant(eventId, characterId, playerId, characterName, startingLevel, startingXp) {
     await this.db.query(
       `INSERT INTO ${this.schema}.event_participants (event_id, character_id, player_id, character_name, starting_level, starting_xp) VALUES ($1, $2, $3, $4, $5, $6);`,
