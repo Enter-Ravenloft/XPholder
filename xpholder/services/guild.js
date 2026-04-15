@@ -380,15 +380,11 @@ class guildService {
     const doesCharacterTiersTableExist = await this.tableExists(
       "character_tiers"
     );
-    console.log(`doesCharacterTiersTableExist: ${doesCharacterTiersTableExist}`);
     if (!doesCharacterTiersTableExist) {
-      console.log("Creating character_tiers table...");
       await this.createCharacterTiersTable();
     }
     const doesPlayersTableExist = await this.tableExists("players");
-    console.log(`doesPlayersTableExist: ${doesPlayersTableExist}`);
     if (!doesPlayersTableExist) {
-      console.log("Creating players table...");
       await this.createPlayersTable();
     }
     const inactiveRoleKeys = [
@@ -397,30 +393,26 @@ class guildService {
       "inactiveRole180Id",
       "inactiveRole365Id",
     ];
-    console.log(`Updating config with keys: ${inactiveRoleKeys}`);
     for (const key of inactiveRoleKeys) {
-      console.log(`Inserting/Updating config key: ${key}`);
       try {
         await this.db.query(
-          `INSERT INTO ${this.schema}.config (name, value) VALUES ($1, '') ON CONFLICT (name) DO NOTHING;`,
+          `INSERT INTO ${this.schema}.config (name, value)
+           SELECT $1, ''
+           WHERE NOT EXISTS (SELECT 1 FROM ${this.schema}.config WHERE name = $1);`,
           [key]
         );
-        console.log(`Successfully processed config key: ${key}`);
       } catch (e) {
         console.error(`Error processing config key ${key}:`, e);
         throw e;
       }
     }
-    console.log("Finished updating config keys, moving to events check...");
+
     const doesEventsTableExist = await this.tableExists("events");
-    console.log(`doesEventsTableExist: ${doesEventsTableExist}`);
     if (!doesEventsTableExist) {
-      console.log("Creating events tables...");
       await this.createEventsTable();
       await this.createEventParticipantsTable();
       await this.createEventDmsTable();
     } else {
-      console.log("Events table already exists, ensuring columns exist...");
       // Add reward columns if they don't exist yet
       await this.db.query(
         `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS xp_reward INTEGER;`
