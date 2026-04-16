@@ -27,6 +27,7 @@ class guildService {
     if (!(await this.isRegistered())) {
       return;
     }
+    this.registered = true;
     this.config = await this.loadInit("config", "name", "value");
     this.levels = await this.loadInit("levels", "level", "xp_to_next");
     this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
