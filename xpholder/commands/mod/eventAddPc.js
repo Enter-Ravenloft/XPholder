@@ -48,7 +48,17 @@ module.exports = {
     }
 
     const eventId = parseInt(interaction.options.getString("event"));
+    if (isNaN(eventId)) {
+      await interaction.editReply("Please pick an event from the autocomplete list.");
+      return;
+    }
     const player = interaction.options.getUser("player");
+    try {
+      await interaction.guild.members.fetch(player.id);
+    } catch {
+      await interaction.editReply("That player is no longer in the server.");
+      return;
+    }
     const characterIndex = interaction.options.getInteger("character");
     const characterId = `${player.id}-${characterIndex}`;
 

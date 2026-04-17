@@ -205,6 +205,15 @@ client.on("interactionCreate", async (interaction) => {
         console.log(error);
       }
       console.log(error);
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply(
+            "Something went wrong running that command. Please check your inputs and try again."
+          );
+        }
+      } catch (replyError) {
+        console.log(replyError);
+      }
     }
   }
 

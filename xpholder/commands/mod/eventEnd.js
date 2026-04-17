@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
+const { isValidYmd } = require("../../utils/validation");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,12 +24,16 @@ module.exports = {
       option
         .setName("xp_reward")
         .setDescription("XP reward for completing this event")
+        .setMinValue(0)
+        .setMaxValue(1000000)
         .setRequired(false)
     )
     .addIntegerOption((option) =>
       option
         .setName("gp_reward")
         .setDescription("GP reward for completing this event")
+        .setMinValue(0)
+        .setMaxValue(1000000)
         .setRequired(false)
     )
     .addBooleanOption((option) =>
@@ -50,7 +55,17 @@ module.exports = {
     }
 
     const eventId = parseInt(interaction.options.getString("event"));
+    if (isNaN(eventId)) {
+      await interaction.editReply("Please pick an event from the autocomplete list.");
+      return;
+    }
     const endDateStr = interaction.options.getString("end_date");
+    if (endDateStr && !isValidYmd(endDateStr)) {
+      await interaction.editReply(
+        "Invalid `end_date`. Use `YYYY-MM-DD` (e.g. `2026-04-15`)."
+      );
+      return;
+    }
     const endDate = endDateStr || new Date().toISOString().split("T")[0];
     const xpReward = interaction.options.getInteger("xp_reward");
     const gpReward = interaction.options.getInteger("gp_reward");

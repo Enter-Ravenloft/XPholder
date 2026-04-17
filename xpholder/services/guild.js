@@ -27,6 +27,7 @@ class guildService {
     if (!(await this.isRegistered())) {
       return;
     }
+    this.registered = true;
     this.config = await this.loadInit("config", "name", "value");
     this.levels = await this.loadInit("levels", "level", "xp_to_next");
     this.roles = await this.loadInit("roles", "role_id", "xp_bonus");
@@ -607,6 +608,38 @@ class guildService {
     await this.db.query(
       `DELETE FROM ${this.schema}.events WHERE event_id = $1;`,
       [eventId]
+    );
+  }
+
+  async updateEvent(eventId, fields) {
+    const allowed = ["name", "event_type", "tier", "start_date"];
+    const setClauses = [];
+    const values = [];
+    let i = 1;
+    for (const col of allowed) {
+      if (fields[col] !== undefined) {
+        setClauses.push(`${col} = $${i++}`);
+        values.push(fields[col]);
+      }
+    }
+    if (setClauses.length === 0) return;
+    values.push(eventId);
+    await this.db.query(
+      `UPDATE ${this.schema}.events SET ${setClauses.join(", ")} WHERE event_id = $${i};`,
+      values
+    );
+  }
+
+  async setPrimaryDm(eventId, userId, username) {
+    await this.db.query(
+      `UPDATE ${this.schema}.event_dms SET is_primary = FALSE WHERE event_id = $1;`,
+      [eventId]
+    );
+    await this.db.query(
+      `INSERT INTO ${this.schema}.event_dms (event_id, user_id, username, is_primary)
+       VALUES ($1, $2, $3, TRUE)
+       ON CONFLICT (event_id, user_id) DO UPDATE SET is_primary = TRUE, username = EXCLUDED.username;`,
+      [eventId, userId, username]
     );
   }
 

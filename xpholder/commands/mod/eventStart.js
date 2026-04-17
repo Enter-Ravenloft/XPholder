@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../../config.json");
+const { isValidYmd } = require("../../utils/validation");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -77,6 +78,12 @@ module.exports = {
     const dmUser = interaction.options.getUser("primary_dm") || interaction.user;
     const dmMember = await interaction.guild.members.fetch(dmUser.id);
     const startDateStr = interaction.options.getString("start_date");
+    if (startDateStr && !isValidYmd(startDateStr)) {
+      await interaction.editReply(
+        "Invalid `start_date`. Use `YYYY-MM-DD` (e.g. `2026-04-15`)."
+      );
+      return;
+    }
     const startDate = startDateStr || new Date().toISOString().split("T")[0];
 
     const eventId = await guildService.createEvent(
