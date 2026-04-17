@@ -78,7 +78,7 @@
       <tbody>
         <% stats.top_dms.forEach(dm => { %>
         <tr class="border-b border-gray-700/50">
-          <td class="py-2"><%= dm.username || dm.user_id %></td>
+          <td class="py-2"><%= dm.username ? playerName(dm.username, null) : dm.user_id %></td>
           <td class="py-2"><%= dm.event_count %></td>
         </tr>
         <% }) %>

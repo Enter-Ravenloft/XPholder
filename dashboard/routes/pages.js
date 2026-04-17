@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
 const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, getPlayerStats } = require("../db");
+const { playerName } = require("../utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -111,8 +112,13 @@ router.get("/dms", requireAuth, async (req, res) => {
     }
 
     const dmStats = await getDmStats(req.session.guildId, dateRange);
+    // Pre-format DM names for chart labels (EJS templates handle table display)
+    const formattedDmStats = dmStats.map((dm) => ({
+      ...dm,
+      username: playerName(dm.username, null) || dm.username,
+    }));
     res.render("dms", {
-      dmStats,
+      dmStats: formattedDmStats,
       activeRange: range || "all",
       customFrom: from || "",
       customTo: to || "",

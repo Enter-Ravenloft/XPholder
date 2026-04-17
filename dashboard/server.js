@@ -7,6 +7,7 @@ const { pool } = require("./db");
 const authRoutes = require("./routes/auth");
 const pageRoutes = require("./routes/pages");
 const apiRoutes = require("./routes/api");
+const { playerName } = require("./utils/playerName");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,33 +62,7 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.guildId = req.session.guildId || null;
   res.locals.guildName = req.session.guildName || null;
-  // Extract player name from Discord nickname
-  // Splits on delimiters (|, [, {, 《, emoji) and strips annotations
-  res.locals.playerName = (displayName, username) => {
-    if (!displayName && !username) return null;
-    const name = displayName || username;
-    // Split on brackets, pipes, and emoji — take the longest non-empty segment from the first parts
-    // If name starts with [, extract content inside first brackets
-    if (name.startsWith("[")) {
-      const bracketMatch = name.match(/^\[([^\]]+)\]/);
-      if (bracketMatch) return bracketMatch[1].trim();
-    }
-    const segments = name.split(/[|¦│[\]{}《》]|[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}☃★♦♠♣♥✦✧❤♤]/u);
-    let raw = segments[0].trim();
-    if (!raw) raw = segments.find((s) => s.trim()) || name;
-    raw = raw
-      .replace(/\s*\(.*$/, "")
-      .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿˢᵀᵁⱽᵂ]+.*$/, "")
-      .replace(/-[^-\s]+$/, "")
-      .trim();
-    // If what remains still has spaces AND the tail contains digits or a
-    // timezone abbrev, treat the rest as roster/timezone info and keep only
-    // the first word. Leaves real multi-word names (e.g. "Sir Ellic") intact.
-    if (raw.includes(" ") && /\d|\b(UTC|EST|PST|CST|MST|GMT|CET|CEST|BST|AEST|AEDT|JST|IST)\b/i.test(raw)) {
-      raw = raw.split(/\s+/)[0];
-    }
-    return raw || name;
-  };
+  res.locals.playerName = playerName;
   next();
 });
 

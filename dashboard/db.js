@@ -71,13 +71,21 @@ async function getEventStats(guildId, dateRange = {}) {
     params
   );
 
+  const hasPlayers = await hasPlayersTable(guildId);
+  const topDmJoin = hasPlayers
+    ? `LEFT JOIN ${schema}.players p ON ed.user_id = p.player_id`
+    : "";
+  const topDmNameCol = hasPlayers
+    ? `COALESCE(p.display_name, ed.username) as username`
+    : `ed.username`;
   const dmRes = await pool.query(
-    `SELECT ed.user_id, ed.username, COUNT(*) as event_count,
+    `SELECT ed.user_id, ${topDmNameCol}, COUNT(*) as event_count,
       COUNT(*) FILTER (WHERE ed.is_primary) as primary_count
      FROM ${schema}.event_dms ed
      JOIN ${schema}.events e ON ed.event_id = e.event_id
+     ${topDmJoin}
      ${eventJoinWhere}
-     GROUP BY ed.user_id, ed.username
+     GROUP BY ed.user_id, ${hasPlayers ? "COALESCE(p.display_name, ed.username)" : "ed.username"}
      ORDER BY event_count DESC
      LIMIT 10;`,
     params
@@ -87,7 +95,7 @@ async function getEventStats(guildId, dateRange = {}) {
     `SELECT tier, COUNT(*) as count
      FROM ${schema}.events ${where}
      GROUP BY tier
-     ORDER BY tier;`,
+     ORDER BY CASE WHEN tier ~ '^\\d' THEN CAST(split_part(tier, '-', 1) AS INTEGER) ELSE 999 END;`,
     params
   );
 
@@ -375,10 +383,19 @@ async function getDmStats(guildId, dateRange = {}) {
   const { conditions, params } = buildDateFilter(1, dateRange, "e");
   const eventWhere = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  // Get all DMs with their event counts and durations
+  // Get all DMs with their event counts and durations, grouped by user_id
+  // so name changes don't split a DM's stats across multiple rows
+  const hasPlayers = await hasPlayersTable(guildId);
+  const dmJoin = hasPlayers
+    ? `LEFT JOIN ${schema}.players p ON ed.user_id = p.player_id`
+    : "";
+  const dmNameCol = hasPlayers
+    ? `COALESCE(p.display_name, ed.username) as username`
+    : `ed.username`;
   const res = await pool.query(
     `SELECT
-      ed.username,
+      ed.user_id,
+      ${dmNameCol},
       COUNT(*) as events_started,
       COUNT(*) FILTER (WHERE e.status = 'completed') as completed_events,
       COUNT(*) FILTER (WHERE e.status = 'active') as active_events,
@@ -400,8 +417,9 @@ async function getDmStats(guildId, dateRange = {}) {
       ), 0) as mean_duration
      FROM ${schema}.event_dms ed
      JOIN ${schema}.events e ON ed.event_id = e.event_id
+     ${dmJoin}
      ${eventWhere}
-     GROUP BY ed.username
+     GROUP BY ed.user_id, ${hasPlayers ? "COALESCE(p.display_name, ed.username)" : "ed.username"}
      ORDER BY events_started DESC;`,
     params
   );
