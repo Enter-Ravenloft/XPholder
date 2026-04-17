@@ -84,7 +84,7 @@
           <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.end_date ? event.end_date.toISOString().split('T')[0] : '—' %></td>
           <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= Math.ceil(((event.end_date || new Date()) - event.start_date) / (1000 * 60 * 60 * 24)) %></td>
           <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.participant_count %></td>
-          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.dm_names || '—' %></td>
+          <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.dm_names ? event.dm_names.split(', ').map(n => playerName(n, null)).join(', ') : '—' %></td>
           <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.xp_reward != null ? event.xp_reward : '—' %></td>
           <td class="px-4 py-3 text-sm text-gray-400 whitespace-nowrap"><%= event.gp_reward != null ? event.gp_reward : '—' %></td>
         </tr>
