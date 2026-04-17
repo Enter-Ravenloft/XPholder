@@ -95,7 +95,7 @@ async function getEventStats(guildId, dateRange = {}) {
     `SELECT tier, COUNT(*) as count
      FROM ${schema}.events ${where}
      GROUP BY tier
-     ORDER BY tier;`,
+     ORDER BY CASE WHEN tier ~ '^\\d' THEN CAST(split_part(tier, '-', 1) AS INTEGER) ELSE 999 END;`,
     params
   );
 
