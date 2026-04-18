@@ -9,7 +9,7 @@ function playerName(displayName, username) {
   let raw = segments[0].trim();
   if (!raw) raw = segments.find((s) => s.trim()) || name;
   raw = raw
-    .replace(/\s*\(.*$/, "")
+    .replace(/[\s-]*\(.*$/, "")
     .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿˢᵀᵁⱽᵂ]+.*$/, "")
     .replace(/-[^-\s]+$/, "")
     .trim();
