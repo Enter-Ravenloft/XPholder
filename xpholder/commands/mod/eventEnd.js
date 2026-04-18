@@ -86,7 +86,10 @@ module.exports = {
     const dms = await guildService.getEventDms(eventId);
 
     const participantList = participants.length > 0
-      ? participants.map((p) => `${p.character_name} (Lvl ${p.starting_level})`).join("\n")
+      ? participants.map((p) => {
+          const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
+          return `${p.character_name}${level}`;
+        }).join("\n")
       : "None";
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.map((d) => d.username).join(", ");

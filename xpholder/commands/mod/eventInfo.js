@@ -48,7 +48,7 @@ module.exports = {
 
     const participantList = participants.length > 0
       ? participants.map((p) => {
-          const level = p.starting_level > 1 ? ` (Lvl ${p.starting_level})` : "";
+          const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
           const player = p.player_id ? ` - <@${p.player_id}>` : "";
           return `${p.character_name}${level}${player}`;
         }).join("\n")
