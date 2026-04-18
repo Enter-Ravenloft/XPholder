@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../../config.json");
+const { playerName } = require("../../utils/playerName");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -55,7 +56,7 @@ module.exports = {
       : "None";
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.length > 0
-      ? sortedDms.map((d) => d.username).join(", ")
+      ? sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ")
       : "None";
 
     const statusEmoji = event.status === "active" ? "🟢" : "✅";

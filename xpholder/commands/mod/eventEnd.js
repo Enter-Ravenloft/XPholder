@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
 const { isValidYmd } = require("../../utils/validation");
+const { playerName } = require("../../utils/playerName");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -92,7 +93,7 @@ module.exports = {
         }).join("\n")
       : "None";
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
-    const dmList = sortedDms.map((d) => d.username).join(", ");
+    const dmList = sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ");
 
     const embed = new EmbedBuilder()
       .setTitle("Event Completed")
