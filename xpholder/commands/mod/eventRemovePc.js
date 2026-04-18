@@ -13,18 +13,10 @@ module.exports = {
         .setAutocomplete(true)
         .setRequired(true)
     )
-    .addUserOption((option) =>
-      option
-        .setName("player")
-        .setDescription("The Player Who Owns The Character")
-        .setRequired(true)
-    )
-    .addIntegerOption((option) =>
+    .addStringOption((option) =>
       option
         .setName("character")
-        .setDescription("Which Character To Remove (1 -> 10)")
-        .setMinValue(1)
-        .setMaxValue(10)
+        .setDescription("The Character To Remove")
         .setAutocomplete(true)
         .setRequired(true)
     )
@@ -51,9 +43,7 @@ module.exports = {
       await interaction.editReply("Please pick an event from the autocomplete list.");
       return;
     }
-    const player = interaction.options.getUser("player");
-    const characterIndex = interaction.options.getInteger("character");
-    const characterId = `${player.id}-${characterIndex}`;
+    const characterId = interaction.options.getString("character");
 
     const event = await guildService.getEvent(eventId);
     if (!event) {
@@ -78,7 +68,7 @@ module.exports = {
       .setFields(
         { inline: true, name: "Event", value: event.name },
         { inline: true, name: "Character", value: removed.character_name || characterId },
-        { inline: true, name: "Player", value: `${player}` }
+        { inline: true, name: "Player", value: removed.player_id ? `<@${removed.player_id}>` : "Unknown" }
       )
       .setTimestamp();
 
@@ -94,20 +84,18 @@ module.exports = {
       );
     } else if (focusedOption.name === "character") {
       const eventOption = interaction.options.get("event");
-      const playerOption = interaction.options.get("player");
-      if (!eventOption || !playerOption) return;
-      const participants = await guildService.getEventParticipants(parseInt(eventOption.value));
-      const playerParticipants = participants.filter(
-        (p) => p.player_id === playerOption.value
-      );
-      const filtered = playerParticipants.filter((p) =>
+      if (!eventOption) return;
+      const eventId = parseInt(eventOption.value);
+      if (isNaN(eventId)) return;
+      const participants = await guildService.getEventParticipants(eventId);
+      const filtered = participants.filter((p) =>
         (p.character_name || "").toLowerCase().startsWith(focusedOption.value.toLowerCase())
       );
       await interaction.respond(
-        filtered.map((p) => {
-          const index = parseInt(p.character_id.split("-").pop());
-          return { name: p.character_name || p.character_id, value: index };
-        })
+        filtered.slice(0, 25).map((p) => ({
+          name: p.character_name || p.character_id,
+          value: p.character_id,
+        }))
       );
     }
   },
