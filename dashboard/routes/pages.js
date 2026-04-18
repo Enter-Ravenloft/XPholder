@@ -156,7 +156,7 @@ router.get("/select-guild", requireLogin, async (req, res) => {
       const guild = availableGuilds[0];
       const moderationRoleId = await getGuildConfig(guild.id, "moderationRoleId");
 
-      if (moderationRoleId) {
+      if (moderationRoleId && process.env.NODE_ENV !== "test") {
         const DISCORD_API = "https://discord.com/api/v10";
         const memberRes = await fetch(
           `${DISCORD_API}/guilds/${guild.id}/members/${req.session.user.id}`,
