@@ -59,7 +59,7 @@ module.exports = {
       ? sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ")
       : "None";
 
-    const statusEmoji = event.status === "active" ? "🟢" : "✅";
+    const statusEmoji = event.status === "active" ? "🟢 " : "";
     const startDate = event.start_date.toISOString().split("T")[0];
     const endDate = event.end_date ? event.end_date.toISOString().split("T")[0] : "Ongoing";
 
@@ -88,7 +88,7 @@ module.exports = {
     const events = [...active, ...completed].slice(0, 25);
     await interaction.respond(
       events.map((e) => ({
-        name: `${e.status === "active" ? "🟢" : "✅"} ${e.name}`,
+        name: `${e.status === "active" ? "🟢 " : ""}${e.name}`,
         value: `${e.event_id}`,
       }))
     );

@@ -612,7 +612,7 @@ class guildService {
   }
 
   async updateEvent(eventId, fields) {
-    const allowed = ["name", "event_type", "tier", "start_date"];
+    const allowed = ["name", "event_type", "tier", "start_date", "end_date", "xp_reward", "gp_reward"];
     const setClauses = [];
     const values = [];
     let i = 1;
