@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder } = require('discord.js');
 
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL } = require("../../config.json");
-const { sqlInjectionCheck, buildCharacterEmbed } = require("../../utils");
+const { buildCharacterEmbed } = require("../../utils");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -96,22 +96,15 @@ module.exports = {
                 sheetUrl.startsWith("https://www.dndbeyond.com/characters/") ||
                 sheetUrl.startsWith("https://docs.google.com/spreadsheets/")
             )) { characterSheet = ""; }
-            else if (sqlInjectionCheck(sheetUrl)) {
-                characterSheet = "";
-            } else { characterSheet = sheetUrl; }
+            else { characterSheet = sheetUrl; }
         } else { characterSheet = ""; }
 
         let characterUrl;
         if (pictureUrl) {
-            if (sqlInjectionCheck(pictureUrl)) {
-                characterUrl = "";
-            } else { characterUrl = pictureUrl.startsWith("https") ? pictureUrl : ""; }
+            characterUrl = pictureUrl.startsWith("https") ? pictureUrl : "";
         } else { characterUrl = ""; }
 
-        let characterName;
-        if (sqlInjectionCheck(name)) {
-            characterName = "Character";
-        } else { characterName = name; }
+        const characterName = name;
 
 
         /*
