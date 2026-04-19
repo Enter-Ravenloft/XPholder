@@ -124,26 +124,32 @@ async function syncGuildPlayers(guild) {
 
 client.once("ready", () => {
   console.log("ready");
-  // Run player sync in the background so the bot can handle commands immediately
-  Promise.allSettled(
-    [...client.guilds.cache.values()].map((guild) => syncGuildPlayers(guild))
-  ).then((results) => {
-    const failed = results.filter((r) => r.status === "rejected");
-    if (failed.length > 0) {
-      console.error(`Player sync failed for ${failed.length} guild(s):`, failed.map((r) => r.reason));
-    }
-  });
-});
+  // Skip player sync in dev — the dev bot connects to a different Discord server
+  // than the guild data in the DB, so syncing would mark all prod players as departed.
+  if (process.env.NODE_ENV === "test") {
+    console.log("Skipping player sync (NODE_ENV=test)");
+  } else {
+    // Run player sync in the background so the bot can handle commands immediately
+    Promise.allSettled(
+      [...client.guilds.cache.values()].map((guild) => syncGuildPlayers(guild))
+    ).then((results) => {
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        console.error(`Player sync failed for ${failed.length} guild(s):`, failed.map((r) => r.reason));
+      }
+    });
 
-setInterval(async () => {
-  for (const [guildId, guild] of client.guilds.cache) {
-    try {
-      await syncGuildPlayers(guild);
-    } catch (err) {
-      console.error(`Daily sync failed for guild ${guildId}:`, err);
-    }
+    setInterval(async () => {
+      for (const [guildId, guild] of client.guilds.cache) {
+        try {
+          await syncGuildPlayers(guild);
+        } catch (err) {
+          console.error(`Daily sync failed for guild ${guildId}:`, err);
+        }
+      }
+    }, 24 * 60 * 60 * 1000);
   }
-}, 24 * 60 * 60 * 1000);
+});
 
 client.on("interactionCreate", async (interaction) => {
   /*

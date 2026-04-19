@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
 const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, getPlayerStats } = require("../db");
-const { playerName } = require("../utils/playerName");
+const { playerName } = require("../../xpholder/utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -156,7 +156,7 @@ router.get("/select-guild", requireLogin, async (req, res) => {
       const guild = availableGuilds[0];
       const moderationRoleId = await getGuildConfig(guild.id, "moderationRoleId");
 
-      if (moderationRoleId) {
+      if (moderationRoleId && process.env.NODE_ENV !== "test") {
         const DISCORD_API = "https://discord.com/api/v10";
         const memberRes = await fetch(
           `${DISCORD_API}/guilds/${guild.id}/members/${req.session.user.id}`,

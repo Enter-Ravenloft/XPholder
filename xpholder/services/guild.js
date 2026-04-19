@@ -612,7 +612,7 @@ class guildService {
   }
 
   async updateEvent(eventId, fields) {
-    const allowed = ["name", "event_type", "tier", "start_date"];
+    const allowed = ["name", "event_type", "tier", "start_date", "end_date", "xp_reward", "gp_reward"];
     const setClauses = [];
     const values = [];
     let i = 1;
@@ -685,6 +685,14 @@ class guildService {
       [eventId]
     );
     return res.rows;
+  }
+
+  async removeEventDm(eventId, userId) {
+    const res = await this.db.query(
+      `DELETE FROM ${this.schema}.event_dms WHERE event_id = $1 AND user_id = $2 RETURNING *;`,
+      [eventId, userId]
+    );
+    return res.rows.length > 0 ? res.rows[0] : null;
   }
 
   async getEventStats() {
