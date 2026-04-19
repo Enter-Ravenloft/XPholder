@@ -1,0 +1,10 @@
+<%- include('partials/head', { title: 'Unauthorized' }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-lg mx-auto px-4 py-16 text-center">
+  <h1 class="text-2xl font-bold mb-4 text-red-400">Access Denied</h1>
+  <p class="text-gray-400 mb-6">You don't have the required role to access this dashboard.</p>
+  <a href="/auth/logout" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm">Logout</a>
+</main>
+
+<%- include('partials/foot') %>

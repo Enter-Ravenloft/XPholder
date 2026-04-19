@@ -56,6 +56,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMembers,
   ],
   partials: [Partials.Channel],
 });
@@ -84,11 +85,65 @@ BOT COMMANDS
 ------------
 */
 
+async function syncGuildPlayers(guild) {
+  const gService = new guildService(db, guild.id);
+  await gService.init();
+  if (!gService.registered) return;
+
+  const inactiveRoleMap = {};
+  if (gService.config["inactiveRole365Id"]) inactiveRoleMap[gService.config["inactiveRole365Id"]] = 365;
+  if (gService.config["inactiveRole180Id"]) inactiveRoleMap[gService.config["inactiveRole180Id"]] = 180;
+  if (gService.config["inactiveRole90Id"]) inactiveRoleMap[gService.config["inactiveRole90Id"]] = 90;
+  if (gService.config["inactiveRole60Id"]) inactiveRoleMap[gService.config["inactiveRole60Id"]] = 60;
+
+  const members = await guild.members.fetch();
+  const presentIds = [];
+
+  for (const [memberId, member] of members) {
+    if (member.user.bot) continue;
+
+    let inactiveDays = null;
+    for (const [roleId, days] of Object.entries(inactiveRoleMap)) {
+      if (member.roles.cache.has(roleId) && (inactiveDays === null || days > inactiveDays)) {
+        inactiveDays = days;
+      }
+    }
+
+    await gService.upsertPlayer(
+      memberId,
+      member.user.username,
+      member.displayName,
+      inactiveDays
+    );
+    presentIds.push(memberId);
+  }
+
+  await gService.markAbsentMembers(presentIds);
+  console.log(`Synced ${presentIds.length} players for guild ${guild.id}`);
+}
+
 client.once("ready", () => {
-  //clearGuildCache();
   console.log("ready");
-  // console.log(client.commands);
+  // Run player sync in the background so the bot can handle commands immediately
+  Promise.allSettled(
+    [...client.guilds.cache.values()].map((guild) => syncGuildPlayers(guild))
+  ).then((results) => {
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      console.error(`Player sync failed for ${failed.length} guild(s):`, failed.map((r) => r.reason));
+    }
+  });
 });
+
+setInterval(async () => {
+  for (const [guildId, guild] of client.guilds.cache) {
+    try {
+      await syncGuildPlayers(guild);
+    } catch (err) {
+      console.error(`Daily sync failed for guild ${guildId}:`, err);
+    }
+  }
+}, 24 * 60 * 60 * 1000);
 
 client.on("interactionCreate", async (interaction) => {
   /*
@@ -150,6 +205,15 @@ client.on("interactionCreate", async (interaction) => {
         console.log(error);
       }
       console.log(error);
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply(
+            "Something went wrong running that command. Please check your inputs and try again."
+          );
+        }
+      } catch (replyError) {
+        console.log(replyError);
+      }
     }
   }
 

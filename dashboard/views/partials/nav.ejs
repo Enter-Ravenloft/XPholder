@@ -1,0 +1,63 @@
+<nav class="bg-gray-800 border-b border-gray-700">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex items-center space-x-8">
+        <a href="/" class="text-xl font-bold text-indigo-400">XPholder</a>
+        <% if (user && guildId) { %>
+          <div class="hidden md:flex items-center space-x-8">
+            <a href="/" class="text-gray-300 hover:text-white">Dashboard</a>
+            <a href="/events" class="text-gray-300 hover:text-white">Events</a>
+            <a href="/dms" class="text-gray-300 hover:text-white">DMs</a>
+            <a href="/active-pcs" class="text-gray-300 hover:text-white">Active PCs</a>
+          </div>
+        <% } %>
+      </div>
+      <div class="flex items-center space-x-4">
+        <% if (user) { %>
+          <div class="hidden md:flex items-center space-x-4">
+            <% if (typeof guildName !== 'undefined' && guildName) { %>
+              <span class="text-sm text-gray-400"><%= guildName %></span>
+            <% } %>
+            <span class="text-sm text-gray-400"><%= user.global_name || user.username %></span>
+            <a href="/auth/logout" class="text-sm text-red-400 hover:text-red-300">Logout</a>
+          </div>
+          <button id="menuToggle" class="md:hidden text-gray-300 hover:text-white focus:outline-none" aria-label="Toggle menu">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path id="menuIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+        <% } else { %>
+          <a href="/auth/login" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md text-sm">Login with Discord</a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+  <% if (user && guildId) { %>
+  <div id="mobileMenu" class="hidden md:hidden border-t border-gray-700">
+    <div class="px-4 py-3 space-y-2">
+      <a href="/" class="block text-gray-300 hover:text-white py-1">Dashboard</a>
+      <a href="/events" class="block text-gray-300 hover:text-white py-1">Events</a>
+      <a href="/dms" class="block text-gray-300 hover:text-white py-1">DMs</a>
+      <a href="/active-pcs" class="block text-gray-300 hover:text-white py-1">Active PCs</a>
+      <div class="border-t border-gray-700 pt-2 mt-2">
+        <% if (typeof guildName !== 'undefined' && guildName) { %>
+          <span class="block text-sm text-gray-400 py-1"><%= guildName %></span>
+        <% } %>
+        <span class="block text-sm text-gray-400 py-1"><%= user.global_name || user.username %></span>
+        <a href="/auth/logout" class="block text-sm text-red-400 hover:text-red-300 py-1">Logout</a>
+      </div>
+    </div>
+  </div>
+  <% } %>
+</nav>
+<script>
+  (function() {
+    var btn = document.getElementById('menuToggle');
+    var menu = document.getElementById('mobileMenu');
+    if (btn && menu) {
+      btn.addEventListener('click', function() {
+        menu.classList.toggle('hidden');
+      });
+    }
+  })();
+</script>
