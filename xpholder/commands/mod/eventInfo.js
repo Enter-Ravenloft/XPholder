@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../../config.json");
+const { playerName } = require("../../utils/playerName");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -48,17 +49,17 @@ module.exports = {
 
     const participantList = participants.length > 0
       ? participants.map((p) => {
-          const level = p.starting_level > 1 ? ` (Lvl ${p.starting_level})` : "";
+          const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
           const player = p.player_id ? ` - <@${p.player_id}>` : "";
           return `${p.character_name}${level}${player}`;
         }).join("\n")
       : "None";
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.length > 0
-      ? sortedDms.map((d) => d.username).join(", ")
+      ? sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ")
       : "None";
 
-    const statusEmoji = event.status === "active" ? "🟢" : "✅";
+    const statusEmoji = event.status === "active" ? "🟢 " : "";
     const startDate = event.start_date.toISOString().split("T")[0];
     const endDate = event.end_date ? event.end_date.toISOString().split("T")[0] : "Ongoing";
 
@@ -87,7 +88,7 @@ module.exports = {
     const events = [...active, ...completed].slice(0, 25);
     await interaction.respond(
       events.map((e) => ({
-        name: `${e.status === "active" ? "🟢" : "✅"} ${e.name}`,
+        name: `${e.status === "active" ? "🟢 " : ""}${e.name}`,
         value: `${e.event_id}`,
       }))
     );

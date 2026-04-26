@@ -1,22 +1,23 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_RETIRE_COLOUR } = require("../../config.json");
+const { playerName } = require("../../utils/playerName");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("event_remove_pc")
-    .setDescription("Removes A PC From An Active Event! [ MOD ]")
+    .setName("event_remove_dm")
+    .setDescription("Removes A DM From An Active Event! [ MOD ]")
     .addStringOption((option) =>
       option
         .setName("event")
-        .setDescription("The Event To Remove The PC From")
+        .setDescription("The Event To Remove The DM From")
         .setAutocomplete(true)
         .setRequired(true)
     )
     .addStringOption((option) =>
       option
-        .setName("character")
-        .setDescription("The Character To Remove")
+        .setName("dm")
+        .setDescription("The DM To Remove")
         .setAutocomplete(true)
         .setRequired(true)
     )
@@ -43,7 +44,7 @@ module.exports = {
       await interaction.editReply("Please pick an event from the autocomplete list.");
       return;
     }
-    const characterId = interaction.options.getString("character");
+    const dmUserId = interaction.options.getString("dm");
 
     const event = await guildService.getEvent(eventId);
     if (!event) {
@@ -55,20 +56,19 @@ module.exports = {
       return;
     }
 
-    const removed = await guildService.removeEventParticipant(eventId, characterId);
+    const removed = await guildService.removeEventDm(eventId, dmUserId);
 
     if (!removed) {
-      await interaction.editReply("That character is not in this event.");
+      await interaction.editReply("That DM is not in this event.");
       return;
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("PC Removed From Event")
+      .setTitle("DM Removed From Event")
       .setColor(XPHOLDER_RETIRE_COLOUR)
       .setFields(
         { inline: true, name: "Event", value: event.name },
-        { inline: true, name: "Character", value: removed.character_name || characterId },
-        { inline: true, name: "Player", value: removed.player_id ? `<@${removed.player_id}>` : "Unknown" }
+        { inline: true, name: "DM", value: playerName(removed.username, null) || removed.username }
       )
       .setTimestamp();
 
@@ -82,19 +82,19 @@ module.exports = {
       await interaction.respond(
         events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
       );
-    } else if (focusedOption.name === "character") {
+    } else if (focusedOption.name === "dm") {
       const eventOption = interaction.options.get("event");
       if (!eventOption) return;
       const eventId = parseInt(eventOption.value);
       if (isNaN(eventId)) return;
-      const participants = await guildService.getEventParticipants(eventId);
-      const filtered = participants.filter((p) =>
-        (p.character_name || "").toLowerCase().startsWith(focusedOption.value.toLowerCase())
+      const dms = await guildService.getEventDms(eventId);
+      const filtered = dms.filter((d) =>
+        (d.username || "").toLowerCase().startsWith(focusedOption.value.toLowerCase())
       );
       await interaction.respond(
-        filtered.slice(0, 25).map((p) => ({
-          name: p.character_name || p.character_id,
-          value: p.character_id,
+        filtered.slice(0, 25).map((d) => ({
+          name: playerName(d.username, null) || d.username,
+          value: d.user_id,
         }))
       );
     }

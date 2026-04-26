@@ -55,6 +55,28 @@ module.exports = {
         .setDescription("New Start Date (YYYY-MM-DD)")
         .setRequired(false)
     )
+    .addStringOption((option) =>
+      option
+        .setName("end_date")
+        .setDescription("New End Date (YYYY-MM-DD)")
+        .setRequired(false)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("xp_reward")
+        .setDescription("XP Reward")
+        .setMinValue(0)
+        .setMaxValue(1000000)
+        .setRequired(false)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("gp_reward")
+        .setDescription("GP Reward")
+        .setMinValue(0)
+        .setMaxValue(1000000)
+        .setRequired(false)
+    )
     .addUserOption((option) =>
       option
         .setName("primary_dm")
@@ -95,6 +117,9 @@ module.exports = {
     const eventType = interaction.options.getString("event_type");
     const tier = interaction.options.getString("tier");
     const startDateStr = interaction.options.getString("start_date");
+    const endDateStr = interaction.options.getString("end_date");
+    const xpReward = interaction.options.getInteger("xp_reward");
+    const gpReward = interaction.options.getInteger("gp_reward");
     const primaryDmUser = interaction.options.getUser("primary_dm");
 
     if (startDateStr && !isValidYmd(startDateStr)) {
@@ -103,8 +128,20 @@ module.exports = {
       );
       return;
     }
+    if (endDateStr && !isValidYmd(endDateStr)) {
+      await interaction.editReply(
+        "Invalid `end_date`. Use `YYYY-MM-DD` (e.g. `2026-04-15`)."
+      );
+      return;
+    }
+    if ((endDateStr || xpReward != null || gpReward != null) && event.status === "active") {
+      await interaction.editReply(
+        "End date, XP reward, and GP reward can only be edited on completed events. Use `/event_end` to close an active event."
+      );
+      return;
+    }
 
-    if (!name && !eventType && !tier && !startDateStr && !primaryDmUser) {
+    if (!name && !eventType && !tier && !startDateStr && !endDateStr && xpReward == null && gpReward == null && !primaryDmUser) {
       await interaction.editReply(
         "Nothing to update. Provide at least one field to change."
       );
@@ -116,6 +153,9 @@ module.exports = {
     if (eventType) fields.event_type = eventType;
     if (tier) fields.tier = tier;
     if (startDateStr) fields.start_date = startDateStr;
+    if (endDateStr) fields.end_date = endDateStr;
+    if (xpReward != null) fields.xp_reward = xpReward;
+    if (gpReward != null) fields.gp_reward = gpReward;
 
     await guildService.updateEvent(eventId, fields);
 
@@ -134,29 +174,38 @@ module.exports = {
 
     const updated = await guildService.getEvent(eventId);
     const startDate = updated.start_date.toISOString().split("T")[0];
+    const endDate = updated.end_date ? updated.end_date.toISOString().split("T")[0] : null;
+
+    const embedFields = [
+      { inline: true, name: "Name", value: updated.name },
+      { inline: true, name: "Type", value: updated.event_type },
+      { inline: true, name: "Tier", value: updated.tier },
+      { inline: true, name: "Start Date", value: startDate },
+    ];
+    if (endDate) embedFields.push({ inline: true, name: "End Date", value: endDate });
+    if (updated.xp_reward != null) embedFields.push({ inline: true, name: "XP Reward", value: `${updated.xp_reward}` });
+    if (updated.gp_reward != null) embedFields.push({ inline: true, name: "GP Reward", value: `${updated.gp_reward}` });
+    embedFields.push({ inline: true, name: "Event ID", value: `${eventId}` });
+    if (newPrimaryDmLabel) embedFields.push({ inline: true, name: "Primary DM", value: newPrimaryDmLabel });
 
     const embed = new EmbedBuilder()
       .setTitle("Event Updated")
       .setColor(XPHOLDER_COLOUR)
-      .setFields(
-        { inline: true, name: "Name", value: updated.name },
-        { inline: true, name: "Type", value: updated.event_type },
-        { inline: true, name: "Tier", value: updated.tier },
-        { inline: true, name: "Start Date", value: startDate },
-        { inline: true, name: "Event ID", value: `${eventId}` },
-        ...(newPrimaryDmLabel
-          ? [{ inline: true, name: "Primary DM", value: newPrimaryDmLabel }]
-          : [])
-      )
+      .setFields(embedFields)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   },
   async autocomplete(guildService, interaction) {
     const focusedValue = interaction.options.getFocused();
-    const events = await guildService.searchEvents(focusedValue);
+    const active = await guildService.searchEvents(focusedValue, "active");
+    const completed = await guildService.searchEvents(focusedValue, "completed");
+    const events = [...active, ...completed].slice(0, 25);
     await interaction.respond(
-      events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
+      events.map((e) => ({
+        name: `${e.status === "active" ? "🟢 " : ""}${e.name}`,
+        value: `${e.event_id}`,
+      }))
     );
   },
 };

@@ -7,7 +7,7 @@ const { pool } = require("./db");
 const authRoutes = require("./routes/auth");
 const pageRoutes = require("./routes/pages");
 const apiRoutes = require("./routes/api");
-const { playerName } = require("./utils/playerName");
+const { playerName } = require("../xpholder/utils/playerName");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
