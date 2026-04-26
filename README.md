@@ -1,119 +1,97 @@
 # XPHolder
 
-A Discord bot for managing Avrae player character XP.
+A Discord bot for tracking D&D character XP, with a small companion web dashboard. Originally a multi-tenant project; this fork runs on a single guild.
 
-## Setting up the Discord Bot
+For the architecture overview, conventions, sharp edges, and the current backlog, see [AGENTS.md](AGENTS.md).
 
-https://discord.com/developers/applications
-Create new Application, generate and save copy of bot token
+## What it does
 
-Permissions needed:
+- Tracks player characters and their XP per guild (one Postgres schema per guild).
+- Awards XP automatically for in-channel roleplay messages (configurable per channel and per role).
+- Announces level-ups and manages the corresponding tier / character-slot / freeze Discord roles.
+- Provides slash commands for moderators to award/edit XP, run an event ledger, and bulk-import/export characters.
+- Surfaces stats in a web dashboard gated by Discord OAuth + the moderation role.
 
-- message content intent (for message XP)
-- use slash commands
-- read messages / view channels
-- manage roles (Tier1, Tier2, etc)
+## Setting up the Discord bot
 
-OAuth2 URL Generator
+In the [Discord Developer Portal](https://discord.com/developers/applications), create a new Application and a Bot user. Copy the bot token.
 
-**Scopes**
-bot
+### Privileged Gateway Intents (Bot tab)
+- Server Members Intent
+- Message Content Intent
 
-**Bot Permissions**
-read messages / view channels
-send messages
-use slash commands
-create private threads
-Manage Roles
-attach files
+### OAuth2 install URL (OAuth2 → URL Generator)
+- **Scopes**: `bot`, `applications.commands`
+- **Bot Permissions**:
+  - View Channels
+  - Send Messages
+  - Use Slash Commands
+  - Manage Roles
+  - Attach Files
 
-## Local Development (Docker)
+## Local development (Docker)
+
+Recommended path. Brings up Postgres + bot + dashboard with one command.
 
 ### Requirements
-
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ### Setup
 
-1. **Create your `.env` file:**
+1. Copy the example env and fill it in:
+   ```sh
+   cp .env.example .env
+   ```
+   - `DISCORD_TOKEN`, `CLIENT_ID`, `COMMAND_INSTALLATION_SERVER_ID` — from your dev application.
+   - `SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP` — JSON map of `serverId` → `channelId` for log embeds (use `{}` to disable).
+   - `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `SESSION_SECRET` — only needed if you're running the dashboard.
 
-```bash
-cp .env.example .env
-```
+   `DATABASE_URL` and `NODE_ENV` are set by Docker Compose; don't add them to `.env`.
 
-Fill in the values:
+2. Start everything:
+   ```sh
+   docker compose up --build
+   ```
+   Bot logs `ready` when connected. Dashboard at http://localhost:3000.
 
-```
-DISCORD_TOKEN=<your dev bot token>
-CLIENT_ID=<your dev bot application ID>
-COMMAND_INSTALLATION_SERVER_ID=<your test server ID>
-SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP={}
-```
-
-`DATABASE_URL` and `NODE_ENV` are handled by Docker Compose — don't add them to `.env`.
-
-2. **Start the bot and database:**
-
-```bash
-docker compose up --build
-```
-
-This starts a PostgreSQL database and the bot. The bot will log `ready` when it's connected to Discord.
+3. (First run) install slash commands and register your test server:
+   ```sh
+   node deploy-commands.js
+   ```
+   Then in Discord: `/register`. If you have a CSV backup, `/import_characters_csv` will restore characters.
 
 ### Notes
+- Code is volume-mounted, but Node won't hot-reload — `docker compose restart bot` after edits.
+- The Postgres data lives in the `pgdata` Docker volume. `docker compose down -v` wipes it.
+- The dev bot is fully isolated from production: separate token, DB, and Discord guild.
+- `tooling/restore-prod-to-dev.sh` refreshes local data from a prod backup. Read before running.
 
-- Source code is volume-mounted, but you need to restart the bot container to pick up changes (`docker compose restart bot`).
-- The database persists in a Docker volume. Use `docker compose down -v` to wipe it.
-- Your dev bot is completely isolated from the production bot — separate token, separate database, separate server.
+## Running the tests
 
-## Local Development (without Docker)
-
-### Requirements
-
-- Node.js
-- PostgreSQL
-
-### Setup
-
-#### Setup PostgreSQL
-
-- Download PostgreSQL installer from the [PostgreSQL Download Page](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)
-- Run the installer and follow instructions
-
-#### Clone and install XPholder
-
-- Clone the repo
-- Run `npm ci` to install project dependencies
-- Create a `.env` file with the following content:
-
-```
-NODE_ENV=test
-# This is the connection string to the postgress db
-DATABASE_URL=
-# Name of the database that will be connected to:  This will be used to form the connection string. If it is left undefined, the connection will fall back to the default database name that postgres provides
-DB_NAME=
-# Bot Token: this is provided by the discord developer portal when a bot is created
-DISCORD_TOKEN=
-
-# Client ID of bot
-CLIENT_ID=
-# A JSON object mapping server IDs to channel IDs for logging,
-# e.g. '{"<serverId1>": <channelId1>, "<serverId2>": <channelId2>, ...}'
-SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP=
-# The server to install commands on
-COMMAND_INSTALLATION_SERVER_ID=
+```sh
+npm test          # single pass
+npm run test:watch
 ```
 
-- Run `node deploy-commands.js` to install the bot commands on COMMAND_INSTALLATION_SERVER_ID
+Tests use [Vitest](https://vitest.dev/) and live next to the source files they cover (e.g., `xpholder/utils/playerName.test.js`). See [AGENTS.md](AGENTS.md) for current coverage and gaps.
 
-- Run `node main.js` to start the bot
-- Run `/register` in the test server
-  - \*\* if one is available, use `/import_characters_csv` to restore from a backup
+## Adding a new command
 
-## Adding a New Command
+1. Drop a `.js` file under `xpholder/commands/everyone/`, `xpholder/commands/mod/`, or `xpholder/commands/owner/`. The directory is convention only — re-check the role inside `execute()` (see existing commands for the pattern).
+2. Restart the bot so the new file is picked up: `docker compose restart bot`.
+3. Re-deploy slash command schemas to Discord:
+   - `node deploy-commands.js` — guild-scoped, near-instant updates. Recommended for development.
+   - `node deploy-global-commands.js` — global commands; can take up to an hour to propagate.
 
-Add a <commandName>.js file under one of commands/everyone/, commands/mod/, or commands/owner.
+`xpholder/commands/mod/eventEdit.js` is the cleanest template to copy from.
 
-Redeploy the XPHolder bot with the changes.
+## Deployment
 
-Run `node deploy-global-commands.js` to install the new commands.
+Production runs on Heroku per `Procfile`:
+
+```
+worker: node main.js
+web: node dashboard/server.js
+```
+
+`NODE_ENV=production` enables secure cookies on the dashboard and the daily Discord member sync on the bot.

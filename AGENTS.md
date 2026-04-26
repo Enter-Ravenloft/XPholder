@@ -24,11 +24,16 @@ Brings up Postgres + bot + dashboard. Bot logs `ready` when connected. Dashboard
 - Production runs on Heroku per `Procfile` (`worker: node main.js`, `web: node dashboard/server.js`).
 - After changing a command's slash schema, run `node deploy-commands.js` to push to Discord.
 
+### Tests
+- `npm test` — runs the Vitest suite once.
+- `npm run test:watch` — watch mode.
+- Tests live next to the file they cover, named `*.test.js`. Test files use ESM `import` (Vitest handles transpile); source files stay CommonJS.
+- Coverage today: pure utility functions (`playerName`, `isValidYmd`, `getters`, `xp`). Commands, `guildService`, and the dashboard are not yet covered.
+
 ### What you can't run
-- **Tests**: none. `npm test` is a stub. Adding a test scaffold is the top backlog item.
 - **Lint/format**: no ESLint or Prettier config.
 
-This means: claims like "I added X" can't be verified by CI. If a change is non-trivial, exercise it in Discord (or against a local Postgres for dashboard changes) before reporting it as done.
+For UI changes (Discord interactions, dashboard pages), `npm test` won't catch regressions — exercise the feature in Discord or in a browser before reporting it as done.
 
 ## Architecture
 
@@ -95,7 +100,7 @@ This repo has accumulated rough edges from a multi-year history with three autho
 
 ## Sharp edges
 
-- **No tests.** Adding them is #1.
+- **Test coverage is shallow.** Pure utils are covered; commands, `guildService`, and the dashboard are not. Adding integration tests for the DB layer is the natural next step.
 - **`init()` runs every interaction and qualifying message** — ~5 Postgres round-trips per Discord event. `guildService.xpCache` and `last_touched` are placeholder fields for caching that was never wired up.
 - **Level-up race in `main.js:377` `updateCharacterXpAndMessage`** — reads `character.xp`, computes old/new level info from `character.xp + xp`, then issues an unconditional `UPDATE ... xp = xp + $1`. Two parallel awards can both miss the level boundary. Wants a transaction with `RETURNING xp`.
 - **Hard-coded dev role ID** `"1059613628803850261"` at `xpholder/services/guild.js:58` (`isDev()`). Should be config.
@@ -122,10 +127,10 @@ This repo has accumulated rough edges from a multi-year history with three autho
 
 ## Backlog (current priorities)
 
-1. Test scaffold + first batch (Vitest; cover `playerName`, `isValidYmd`, `getXp`, `getLevelInfo`, `getRoleMultiplier`, `getTier`, `calculateXp`, `awardCXPs`).
-2. Move dev role ID to config; standardize schema-name handling across `guildService`.
-3. Fix the level-up race (transaction + `RETURNING xp`).
-4. `reportError(context, err)` helper; replace `console.log(error)`; close the Undo FIXME.
-5. Cache `guildService` per guild (small TTL, invalidate on `update*`).
+1. Move dev role ID to config; standardize schema-name handling across `guildService`.
+2. Fix the level-up race (transaction + `RETURNING xp`).
+3. `reportError(context, err)` helper; replace `console.log(error)`; close the Undo FIXME.
+4. Cache `guildService` per guild (small TTL, invalidate on `update*`).
+5. Expand test coverage: `guildService` (against a real Postgres in Docker) and a few command handlers.
 6. Tooling hygiene: ESLint + Prettier; `engines` in `package.json`; drop dead deps; validate `SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP` at startup; fix `setColor;`; default-throw in `getXp`.
 7. Dedupe the `config-schema` comment block from `register.js` and `editConfig.js`.
