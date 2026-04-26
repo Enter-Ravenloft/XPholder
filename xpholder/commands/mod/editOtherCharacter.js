@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
-const { sqlInjectionCheck, buildCharacterEmbed } = require("../../utils");
+const { buildCharacterEmbed } = require("../../utils");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -107,8 +107,6 @@ module.exports = {
         )
       ) {
         characterSheet = "";
-      } else if (sqlInjectionCheck(sheetUrl)) {
-        characterSheet = "";
       } else {
         characterSheet = sheetUrl;
       }
@@ -118,21 +116,12 @@ module.exports = {
 
     let characterUrl;
     if (pictureUrl) {
-      if (sqlInjectionCheck(pictureUrl)) {
-        characterUrl = null;
-      } else {
-        characterUrl = pictureUrl.startsWith("https") ? pictureUrl : "";
-      }
+      characterUrl = pictureUrl.startsWith("https") ? pictureUrl : "";
     } else {
       characterUrl = null;
     }
 
-    let characterName;
-    if (sqlInjectionCheck(name)) {
-      characterName = "Character";
-    } else {
-      characterName = name;
-    }
+    const characterName = name;
 
     /*
         ----------------

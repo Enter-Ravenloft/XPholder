@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { sqlInjectionCheck } = require('../../utils');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const { XPHOLDER_COLOUR, XPHOLDER_ICON_URL, DEV_SERVER_URL } = require("../../config.json");
@@ -54,11 +53,6 @@ module.exports = {
             const csvRowValues = csvRow.split(',');
             let csvData = {};
             for (rowValueIndex in csvRowValues){
-                if ( sqlInjectionCheck(csvHeaders[rowValueIndex]) ||  
-                     sqlInjectionCheck(csvRowValues[rowValueIndex])){
-                        await interaction.editReply(`Malicious Data Found : ${csvHeaders[rowValueIndex]} - ${csvRowValues[rowValueIndex]}\nEnding Process`);
-                        return;
-                     }
                 csvData[`${csvHeaders[rowValueIndex]}`] = csvRowValues[rowValueIndex];
             }
 
