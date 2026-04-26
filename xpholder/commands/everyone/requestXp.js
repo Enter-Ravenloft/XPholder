@@ -42,9 +42,7 @@ module.exports = {
     //     .addChoices(
     //         { name: "Set Level", value: "set_level" },
     //         { name: "Set XP", value: "set_xp" },
-    //         { name: "Get XP", value: "give_xp" },
-    //         { name: "Set CXP", value: "set_cxp" },
-    //         { name: "Get CXP", value: "give_cxp" }
+    //         { name: "Get XP", value: "give_xp" }
     //     )
     //     .setRequired(true))
     .addIntegerOption((option) =>

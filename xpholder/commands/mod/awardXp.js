@@ -46,9 +46,7 @@ module.exports = {
         .addChoices(
           { name: "Set Level", value: "set_level" },
           { name: "Set XP", value: "set_xp" },
-          { name: "Give XP", value: "give_xp" },
-          // { name: "Set CXP", value: "set_cxp" },
-          // { name: "Give CXP", value: "give_cxp" }
+          { name: "Give XP", value: "give_xp" }
         )
         .setRequired(true)
     )
@@ -202,34 +200,6 @@ module.exports = {
           { inline: false, name: "Progress", value: progressBar },
         ];
         break;
-      // case "set_cxp":
-      //   title = `${character["name"]}'s CXP Was Set`;
-      //   fielfs = [
-      //     {
-      //       inline: true,
-      //       name: "Delta",
-      //       value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
-      //     },
-      //     { inline: true, name: "Level", value: newLevelInfo["level"] },
-      //     { inline: true, name: "Total CXP", value: `${value}` },
-      //     { inline: true, name: "Set By", value: `${interaction.user}` },
-      //     { inline: false, name: "Progress", value: progressBar },
-      //   ];
-      //   break;
-      // case "give_cxp":
-      //   title = `${character["name"]}'s Was Awarded CXP`;
-      //   fielfs = [
-      //     {
-      //       inline: true,
-      //       name: "Delta",
-      //       value: `${Math.floor(oldXp)} -> **${Math.floor(newXp)}**`,
-      //     },
-      //     levelField,
-      //     { inline: true, name: "CXP Received", value: `${value}` },
-      //     { inline: true, name: "Set By", value: `${interaction.user}` },
-      //     { inline: false, name: "Progress", value: progressBar },
-      //   ];
-      //   break;
     }
     const awardEmbed = buildXPEmbed(title, character, fields, color, memo);
     /*

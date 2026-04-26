@@ -47,7 +47,7 @@ For UI changes (Discord interactions, dashboard pages), `npm test` won't catch r
 - `xpholder/services/guild.js` — `guildService` class. Wraps all DB access, holds per-guild cached state (`config`, `levels`, `roles`, `channels`, `characterTiers`) loaded by `init()`.
 - `xpholder/utils/`
   - `getters.js` — XP math (`getXp`, `getLevelInfo`, `getRoleMultiplier`, `getTier`, `getActiveCharacterNumber`).
-  - `xp.js` — award math (`calculateXp`, `awardCXPs`).
+  - `xp.js` — award math (`calculateXp`).
   - `characterEmbed.js` — Discord embed builders.
   - `logging.js` — pushes log embeds to a per-server channel from `SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP`.
   - `validation.js`, `playerName.js` — pure helpers, shared with the dashboard.
@@ -129,7 +129,6 @@ The codebase has three distinct testing surfaces, and each wants a different app
 - **`awardXp.js:299` Undo button is broken**: "This interaction failed" from Discord with no app-side logs. Fix is gated on better error reporting.
 - **`messageCreate` channel walk** sequentially `await guild.channels.fetch(parentId)` instead of `cache.get(parentId)` first. Not a correctness bug, just slow.
 - **Dead code**: `xpholder/database/sqlite.js`; `mkdirp` dep; `node-fetch` import in `importCharacters.js` (Node 20 has built-in `fetch`); `console.log;` no-op at `main.js:238`.
-- **Latent crash in `xpholder/utils/xp.js`**: `awardCXPs` calls `getLevelInfo` without importing it. Currently unreachable — the `set_cxp`/`give_cxp` award types are commented out in `awardXp.js`. If you revive CXP support, add `const { getLevelInfo } = require("./getters")` and write tests.
 
 ## Dev safety
 
