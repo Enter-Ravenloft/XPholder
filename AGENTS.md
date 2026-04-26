@@ -28,7 +28,7 @@ Brings up Postgres + bot + dashboard. Bot logs `ready` when connected. Dashboard
 - `npm test` — runs the Vitest suite once.
 - `npm run test:watch` — watch mode.
 - Tests live next to the file they cover, named `*.test.js`. Test files use ESM `import` (Vitest handles transpile); source files stay CommonJS.
-- Coverage today: pure utility functions (`playerName`, `isValidYmd`, `getters`, `xp`). Commands, `guildService`, and the dashboard are not yet covered.
+- Coverage today: pure utility functions only. Commands, `guildService`, and the dashboard are not yet covered. See "Test strategy" below for the plan.
 
 ### What you can't run
 - **Lint/format**: no ESLint or Prettier config.
@@ -98,6 +98,25 @@ One Postgres instance, one schema per registered guild named `guild<guildId>`. P
 ### Working style
 This repo has accumulated rough edges from a multi-year history with three authors. When you spot something inconsistent (schema interpolation, error handling, typos) you'll be tempted to do a sweeping cleanup. Don't. Make the change the user asked for, and at most flag the adjacent issue. The maintainers prefer small focused diffs they can review against a known intent.
 
+## Test strategy
+
+The codebase has three distinct testing surfaces, and each wants a different approach. The plan is sequenced so that the safety net is in place before behavior-modifying work begins.
+
+**Phase 1 — Pure-function unit tests.** Cheap, high-signal, no infrastructure. Cover everything in `xpholder/utils/` that doesn't do I/O. *Status: complete.*
+
+**Phase 2 — Postgres integration tests for `guildService`.** This is the unlock for the schema-handling refactor (backlog #1). Plan:
+- Vitest `globalSetup` against the docker-compose `db` service.
+- Per-test isolation via a unique schema name (`guildtest_<random>`), dropped on teardown. `guildService` is already schema-scoped, so this maps naturally.
+- Separate `npm run test:integration` script so unit tests stay fast and runnable without Docker.
+- Characterize each `guildService` method: insert/read round-trips, upsert conflict handling, that `searchEvents` escapes `%`/`_`, that `updateEvent`'s column whitelist actually rejects unknown columns, etc.
+
+**Phase 3 — Extract-and-test as the on-ramp to each backlog item that touches code.** Don't try to test command files as-is via heavy mocking — the ratio of fixture-setup to coverage is bad and the tests are brittle. Instead, when about to change a piece of code: pull the pure logic into a helper, test the helper, then make the behavior change. Examples currently visible:
+- `main.js:updateCharacterXpAndMessage` (backlog #2 / level-up race) — extract `computeLevelTransition(oldXp, newXp, levels) → { changed, oldLevel, newLevel, newTier }`, test it, then wrap the DB write in a transaction.
+- `evaluateCharacterTierRoles` in `xpholder/utils/roleManagement.js` — split the "which roles should this player have" computation (pure) from `roles.add/remove` (side effect).
+- `dashboard/db.js:getActivePcStats` has an inlined `getLevel(xp)` that duplicates `getters.js:getLevelInfo` with a different implementation. Worth consolidating into a single tested helper at some point.
+
+**Anti-recommendation:** don't write end-to-end tests of `main.js`'s `messageCreate` or `interactionCreate` handlers as-is. They're orchestrators with too many side effects; mock-heavy tests there would lock in current structure and make refactoring harder, not easier.
+
 ## Sharp edges
 
 - **Test coverage is shallow.** Pure utils are covered; commands, `guildService`, and the dashboard are not. Adding integration tests for the DB layer is the natural next step.
@@ -110,6 +129,7 @@ This repo has accumulated rough edges from a multi-year history with three autho
 - **`awardXp.js:299` Undo button is broken**: "This interaction failed" from Discord with no app-side logs. Fix is gated on better error reporting.
 - **`messageCreate` channel walk** sequentially `await guild.channels.fetch(parentId)` instead of `cache.get(parentId)` first. Not a correctness bug, just slow.
 - **Dead code**: `xpholder/database/sqlite.js`; `mkdirp` dep; `node-fetch` import in `importCharacters.js` (Node 20 has built-in `fetch`); `console.log;` no-op at `main.js:238`.
+- **Latent crash in `xpholder/utils/xp.js`**: `awardCXPs` calls `getLevelInfo` without importing it. Currently unreachable — the `set_cxp`/`give_cxp` award types are commented out in `awardXp.js`. If you revive CXP support, add `const { getLevelInfo } = require("./getters")` and write tests.
 
 ## Dev safety
 
@@ -127,7 +147,7 @@ This repo has accumulated rough edges from a multi-year history with three autho
 
 ## Backlog (current priorities)
 
-1. Move dev role ID to config; standardize schema-name handling across `guildService`.
+1. Move dev role ID to config; standardize schema-name handling across `guildService`. *(Tackle this after Phase 2 of the test strategy is in place.)*
 2. Fix the level-up race (transaction + `RETURNING xp`).
 3. `reportError(context, err)` helper; replace `console.log(error)`; close the Undo FIXME.
 4. Cache `guildService` per guild (small TTL, invalidate on `update*`).
