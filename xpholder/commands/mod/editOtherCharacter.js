@@ -79,7 +79,6 @@ module.exports = {
       interaction.options.getUser("player").id
     );
     const user = interaction.user;
-    //        const player = await guild.members.fetch(user.id);
 
     const character = await guildService.getCharacter(
       `${player.id}-${characterNumber}`

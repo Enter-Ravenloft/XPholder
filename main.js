@@ -231,11 +231,6 @@ client.on("interactionCreate", async (interaction) => {
 
   if (interaction.isAutocomplete()) {
     try {
-      //   console.log(
-      //     command.autocomplete,
-      //     interaction.client.commands.get(interaction.commandName)
-      //   );
-      console.log;
       await command.autocomplete(gService, interaction);
     } catch (error) {
       console.error(error);

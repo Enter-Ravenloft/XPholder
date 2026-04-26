@@ -35,16 +35,6 @@ module.exports = {
         .setAutocomplete(true)
         .setRequired(true)
     )
-    // Only 'Get XP' is used by Enter Ravenloft
-    // .addStringOption(option => option
-    //     .setName("award_type")
-    //     .setDescription("The Field That You Want To Manage Of A User")
-    //     .addChoices(
-    //         { name: "Set Level", value: "set_level" },
-    //         { name: "Set XP", value: "set_xp" },
-    //         { name: "Get XP", value: "give_xp" }
-    //     )
-    //     .setRequired(true))
     .addIntegerOption((option) =>
       option
         .setName("value")

@@ -128,7 +128,7 @@ The codebase has three distinct testing surfaces, and each wants a different app
 - **`buildXPEmbed` line `awardEmbed.setColor;`** (no parens) — color param silently ignored.
 - **`awardXp.js:299` Undo button is broken**: "This interaction failed" from Discord with no app-side logs. Fix is gated on better error reporting.
 - **`messageCreate` channel walk** sequentially `await guild.channels.fetch(parentId)` instead of `cache.get(parentId)` first. Not a correctness bug, just slow.
-- **Dead code**: `xpholder/database/sqlite.js`; `mkdirp` dep; `node-fetch` import in `importCharacters.js` (Node 20 has built-in `fetch`); `console.log;` no-op at `main.js:238`.
+- **Dead code**: `node-fetch` import in `importCharacters.js` (Node 20 has built-in `fetch`).
 
 ## Dev safety
 
