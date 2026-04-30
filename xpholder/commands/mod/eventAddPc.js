@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../../config.json");
 const { getLevelInfo } = require("../../utils");
+const { resolveEventOption } = require("../../utils/resolveEventOption");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -47,11 +48,8 @@ module.exports = {
       return;
     }
 
-    const eventId = parseInt(interaction.options.getString("event"));
-    if (isNaN(eventId)) {
-      await interaction.editReply("Please pick an event from the autocomplete list.");
-      return;
-    }
+    const eventId = await resolveEventOption(interaction, guildService, "active");
+    if (eventId == null) return;
     const player = interaction.options.getUser("player");
     try {
       await interaction.guild.members.fetch(player.id);
