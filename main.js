@@ -182,7 +182,7 @@ client.on("interactionCreate", async (interaction) => {
   // LOADING GUILD SERVICE
   const gService = new guildService(db, guildId);
   await gService.init();
-  if (!(await gService.isRegistered()) && command.data.name != "register") {
+  if (!(await gService.isRegistered()) && command?.data?.name != "register") {
     // Try Catch on the reply, because this is a restful call, and errors can be found
     try {
       await interaction.reply({
