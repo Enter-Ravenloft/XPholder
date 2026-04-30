@@ -85,7 +85,8 @@ async function handleEditDmSelect(guildService, interaction) {
   let member;
   try {
     member = await interaction.guild.members.fetch(userId);
-  } catch {
+  } catch (err) {
+    console.error("guild.members.fetch failed:", err);
     await interaction.reply({ content: "That user is no longer in the server.", ephemeral: true });
     return;
   }
