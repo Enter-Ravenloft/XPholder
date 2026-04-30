@@ -56,6 +56,28 @@ async function logError(interaction, error) {
   _logToDiscord(interaction.guild, { embeds: [logErrorEmbed] }, "logError");
 }
 
+async function logFallbackResolved(interaction, raw, resolvedEventId, eventName) {
+  const logEmbed = new EmbedBuilder()
+    .setTitle("Event resolved by name fallback")
+    .setDescription(
+      "Discord submitted a non-numeric `event` option (likely cached stale state). " +
+        "The bot recovered by exact-name lookup."
+    )
+    .setFields(
+      { inline: false, name: "Guild", value: `${interaction.guild.name} (${interaction.guild.id})` },
+      { inline: false, name: "Author", value: `${interaction.member.displayName} (${interaction.user.id})` },
+      { inline: false, name: "Command", value: `${interaction.commandName}` },
+      { inline: false, name: "Raw input", value: `${raw}` },
+      { inline: true, name: "Resolved id", value: `${resolvedEventId}` },
+      { inline: true, name: "Resolved name", value: `${eventName}` }
+    )
+    .setTimestamp()
+    .setColor(XPHOLDER_COLOUR)
+    .setThumbnail(interaction.client.user.avatarURL());
+
+  _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logFallbackResolved");
+}
+
 async function logRPXP(player, characterName, xp, message) {
   const logMessage = `**RPXP Awarded:** ${xp.toFixed(1)} XP to ${characterName} (${player.displayName}) for: ${message.url}`;
 
@@ -103,6 +125,7 @@ async function _logToDiscord(server, sendPayload, label) {
 module.exports = {
   logCommand,
   logError,
+  logFallbackResolved,
   logRPXP,
   logRequestXPApproval,
   logRequestXPRejection,

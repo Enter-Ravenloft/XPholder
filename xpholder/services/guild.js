@@ -597,6 +597,14 @@ class guildService {
     return res.rows;
   }
 
+  async searchEventsExact(name, status) {
+    const res = await this.db.query(
+      `SELECT * FROM ${this.schema}.events WHERE LOWER(name) = LOWER($1) AND status = $2 ORDER BY event_id DESC;`,
+      [name, status]
+    );
+    return res.rows;
+  }
+
   async endEvent(eventId, endDate, xpReward = null, gpReward = null) {
     await this.db.query(
       `UPDATE ${this.schema}.events SET status = 'completed', end_date = $1, xp_reward = $2, gp_reward = $3 WHERE event_id = $4;`,

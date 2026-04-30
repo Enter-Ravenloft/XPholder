@@ -448,6 +448,31 @@ describe("events", () => {
     expect(bsHits.map((e) => e.name)).toEqual(["abc\\def"]);
   });
 
+  it("searchEventsExact returns case-insensitive exact-name matches scoped to status", async () => {
+    const { gService } = ctx;
+
+    // create three events: two named "Arena" (one active, one completed), and "arena 2" (a near-match)
+    const arenaActiveId = await gService.createEvent("Arena", "Mission", "5-7", "2026-01-01", "111", "dm-one");
+    const arenaCompletedId = await gService.createEvent("Arena", "Mission", "5-7", "2026-01-02", "222", "dm-two");
+    await gService.endEvent(arenaCompletedId, "2026-01-03");
+    await gService.createEvent("arena 2", "Mission", "5-7", "2026-01-04", "333", "dm-three");
+
+    const activeMatches = await gService.searchEventsExact("arena", "active");
+    expect(activeMatches.map((r) => r.event_id)).toEqual([arenaActiveId]);
+
+    const completedMatches = await gService.searchEventsExact("ARENA", "completed");
+    expect(completedMatches.map((r) => r.event_id)).toEqual([arenaCompletedId]);
+
+    // duplicate names within the same status should all return
+    const dup1 = await gService.createEvent("Arena", "Mission", "5-7", "2026-01-05", "444", "dm-four");
+    const allActive = await gService.searchEventsExact("arena", "active");
+    expect(allActive.map((r) => r.event_id).sort()).toEqual([arenaActiveId, dup1].sort());
+
+    // missing search returns empty
+    const none = await gService.searchEventsExact("Nope", "active");
+    expect(none).toEqual([]);
+  });
+
   it("updateEvent applies whitelisted columns and silently ignores unknown ones", async () => {
     const { gService } = ctx;
     const id = await makeEvent({ name: "Original" });
