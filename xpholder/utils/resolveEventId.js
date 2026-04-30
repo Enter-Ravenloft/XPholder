@@ -1,4 +1,4 @@
-async function resolveEventId(guildService, raw, statusFilter) {
+async function resolveEventId(guildService, raw, statusFilter = "active") {
   if (raw == null) return null;
   const trimmed = String(raw).trim();
   if (trimmed === "") return null;
