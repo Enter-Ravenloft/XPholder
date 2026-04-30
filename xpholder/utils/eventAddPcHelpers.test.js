@@ -7,6 +7,7 @@ import {
 describe("parseAddPcCustomId", () => {
   it.each([
     ["event_add_pc_user:42", { kind: "user", eventId: 42, playerId: null }],
+    ["event_add_pc_user:42:n3", { kind: "user", eventId: 42, playerId: null }],
     ["event_add_pc_char:42:1234567890", { kind: "char", eventId: 42, playerId: "1234567890" }],
     ["event_add_pc_done:42", { kind: "done", eventId: 42, playerId: null }],
   ])("parses %s", (customId, expected) => {
@@ -49,7 +50,7 @@ describe("buildAddPcMessage", () => {
     expect(result.components).toHaveLength(2);
     const customIds = result.components.map((row) => row.components[0].data.custom_id);
     expect(customIds).toEqual([
-      "event_add_pc_user:42",
+      "event_add_pc_user:42:n0",
       "event_add_pc_done:42",
     ]);
   });
@@ -64,7 +65,7 @@ describe("buildAddPcMessage", () => {
     expect(result.components).toHaveLength(3);
     const customIds = result.components.map((row) => row.components[0].data.custom_id);
     expect(customIds).toEqual([
-      "event_add_pc_user:42",
+      "event_add_pc_user:42:n0",
       "event_add_pc_char:42:111",
       "event_add_pc_done:42",
     ]);
@@ -76,14 +77,25 @@ describe("buildAddPcMessage", () => {
     expect(fields.find((f) => f.name === "Participants").value).toBe("None");
   });
 
-  it("renders comma-separated 'Name (Lvl X)' for participants", () => {
+  it("renders bulleted 'Name (Lvl X)' for participants", () => {
     const participants = [
       { character_name: "Alice", starting_level: 5 },
       { character_name: "Bob", starting_level: 6 },
     ];
     const result = buildAddPcMessage(eventFixture, participants, null, []);
     const fields = result.embeds[0].data.fields;
-    expect(fields.find((f) => f.name === "Participants").value).toBe("Alice (Lvl 5), Bob (Lvl 6)");
+    expect(fields.find((f) => f.name === "Participants").value).toBe("• Alice (Lvl 5)\n• Bob (Lvl 6)");
+  });
+
+  it("varies UserSelect customId nonce by participant count", () => {
+    const noPart = buildAddPcMessage(eventFixture, [], null, []);
+    expect(noPart.components[0].components[0].data.custom_id).toBe("event_add_pc_user:42:n0");
+
+    const twoPart = buildAddPcMessage(eventFixture, [
+      { character_name: "Alice", starting_level: 5 },
+      { character_name: "Bob", starting_level: 6 },
+    ], null, []);
+    expect(twoPart.components[0].components[0].data.custom_id).toBe("event_add_pc_user:42:n2");
   });
 
   it("populates StringSelect options from availableCharacters using character_index as value", () => {

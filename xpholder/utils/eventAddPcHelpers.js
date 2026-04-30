@@ -10,7 +10,7 @@ const { XPHOLDER_COLOUR } = require("../config.json");
 
 function parseAddPcCustomId(customId) {
   if (typeof customId !== "string") return null;
-  const match = /^event_add_pc_(user|char|done):(\d+)(?::(\d+))?$/.exec(customId);
+  const match = /^event_add_pc_(user|char|done):(\d+)(?::(\d+))?(?::n\d+)?$/.exec(customId);
   if (!match) return null;
   const kind = match[1];
   const eventId = parseInt(match[2], 10);
@@ -25,7 +25,7 @@ function parseAddPcCustomId(customId) {
 
 function buildAddPcMessage(event, participants, selectedPlayerId, availableCharacters) {
   const participantList = participants.length > 0
-    ? participants.map((p) => `${p.character_name} (Lvl ${p.starting_level})`).join(", ")
+    ? participants.map((p) => `• ${p.character_name} (Lvl ${p.starting_level})`).join("\n")
     : "None";
 
   const embed = new EmbedBuilder()
@@ -39,14 +39,14 @@ function buildAddPcMessage(event, participants, selectedPlayerId, availableChara
     )
     .setFooter({
       text: selectedPlayerId
-        ? "Pick a character below, or pick a different player above. Click Done when finished."
-        : "Pick a player to add a PC from. Click Done when finished.",
+        ? "Choose a character below, or choose a different player above. Click Done when finished."
+        : "Choose a player. Click Done when finished.",
     });
 
   const userRow = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
-      .setCustomId(`event_add_pc_user:${event.event_id}`)
-      .setPlaceholder("Pick a player to add a PC from")
+      .setCustomId(`event_add_pc_user:${event.event_id}:n${participants.length}`)
+      .setPlaceholder("Choose a Player")
   );
 
   const doneRow = new ActionRowBuilder().addComponents(
