@@ -29,6 +29,12 @@ describe("parseEventEditCustomId", () => {
   ])("returns null for invalid id %s", (customId) => {
     expect(parseEventEditCustomId(customId)).toBeNull();
   });
+
+  it("returns null for non-string input", () => {
+    expect(parseEventEditCustomId(null)).toBeNull();
+    expect(parseEventEditCustomId(undefined)).toBeNull();
+    expect(parseEventEditCustomId(42)).toBeNull();
+  });
 });
 
 describe("computeFieldDiff", () => {
@@ -283,5 +289,14 @@ describe("buildEventEditModal", () => {
     const values = modal.components.map((row) => row.components[0].data.value);
     expect(values[2]).toBe("");
     expect(values[3]).toBe("");
+  });
+
+  it("truncates event name to fit 45-char modal title but keeps full name in input", () => {
+    const longName = "A".repeat(50);
+    const modal = buildEventEditModal({ ...fixture, name: longName });
+    expect(modal.data.title.length).toBeLessThanOrEqual(45);
+    expect(modal.data.title).toMatch(/\.\.\.$/);
+    // The name TextInput should still hold the full untruncated name for editing
+    expect(modal.components[0].components[0].data.value).toBe(longName);
   });
 });
