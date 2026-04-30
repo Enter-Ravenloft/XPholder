@@ -1,6 +1,4 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
-const { EmbedBuilder } = require("discord.js");
-const { XPHOLDER_COLOUR } = require("../../config.json");
 const { getLevelInfo } = require("../../utils");
 const { resolveEventOption } = require("../../utils/resolveEventOption");
 const {
@@ -146,22 +144,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("event")
-        .setDescription("The Event To Add The PC To")
-        .setAutocomplete(true)
-        .setRequired(true)
-    )
-    .addUserOption((option) =>
-      option
-        .setName("player")
-        .setDescription("The Player Who Owns The Character")
-        .setRequired(true)
-    )
-    .addIntegerOption((option) =>
-      option
-        .setName("character")
-        .setDescription("Which Character To Add (1 -> 10)")
-        .setMinValue(1)
-        .setMaxValue(10)
+        .setDescription("The Event To Add PCs To")
         .setAutocomplete(true)
         .setRequired(true)
     )
@@ -177,23 +160,12 @@ module.exports = {
       interaction.user.id != interaction.guild.ownerId &&
       !guildService.isDev(interaction.member._roles)
     ) {
-      await interaction.editReply(
-        "Sorry, you do not have the right role to use this command."
-      );
+      await interaction.editReply("Sorry, you do not have the right role to use this command.");
       return;
     }
 
     const eventId = await resolveEventOption(interaction, guildService, "active");
     if (eventId == null) return;
-    const player = interaction.options.getUser("player");
-    try {
-      await interaction.guild.members.fetch(player.id);
-    } catch {
-      await interaction.editReply("That player is no longer in the server.");
-      return;
-    }
-    const characterIndex = interaction.options.getInteger("character");
-    const characterId = `${player.id}-${characterIndex}`;
 
     const event = await guildService.getEvent(eventId);
     if (!event) {
@@ -205,66 +177,15 @@ module.exports = {
       return;
     }
 
-    const character = await guildService.getCharacter(characterId);
-    if (!character) {
-      await interaction.editReply("Sorry, that character does not exist.");
-      return;
-    }
-
-    const levelInfo = getLevelInfo(guildService.levels, character.xp);
-
-    try {
-      await guildService.addEventParticipant(
-        eventId,
-        characterId,
-        player.id,
-        character.name,
-        parseInt(levelInfo.level),
-        character.xp
-      );
-    } catch (error) {
-      if (error.code === "23505") {
-        await interaction.editReply(
-          "That character is already in this event."
-        );
-        return;
-      }
-      throw error;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle("PC Added To Event")
-      .setColor(XPHOLDER_COLOUR)
-      .setFields(
-        { inline: true, name: "Event", value: event.name },
-        { inline: true, name: "Character", value: character.name },
-        { inline: true, name: "Player", value: `${player}` },
-        { inline: true, name: "Level", value: `${levelInfo.level}` },
-        { inline: true, name: "XP", value: `${Math.floor(character.xp)}` }
-      )
-      .setTimestamp();
-
-    await interaction.editReply({ embeds: [embed] });
+    const participants = await guildService.getEventParticipants(eventId);
+    await interaction.editReply(buildAddPcMessage(event, participants, null, []));
   },
   async autocomplete(guildService, interaction) {
-    const focusedOption = interaction.options.getFocused(true);
-
-    if (focusedOption.name === "event") {
-      const events = await guildService.searchEvents(focusedOption.value);
-      await interaction.respond(
-        events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
-      );
-    } else if (focusedOption.name === "character") {
-      const playerOption = interaction.options.get("player");
-      if (!playerOption) return;
-      const characters = await guildService.getAllCharacters(playerOption.value);
-      const filtered = characters.filter((c) =>
-        c.name.toLowerCase().startsWith(focusedOption.value.toLowerCase())
-      );
-      await interaction.respond(
-        filtered.map((c) => ({ name: c.name, value: c.character_index }))
-      );
-    }
+    const focusedValue = interaction.options.getFocused();
+    const events = await guildService.searchEvents(focusedValue);
+    await interaction.respond(
+      events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
+    );
   },
   handleAddPcUserSelect,
   handleAddPcCharacterSelect,
