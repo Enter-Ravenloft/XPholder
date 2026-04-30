@@ -43,6 +43,11 @@ const { handleXpCommandButton } = require("./xpholder/commands/everyone/xp.js");
 const {
   handleRequestXpCommandButton,
 } = require("./xpholder/commands/everyone/requestXp.js");
+const {
+  handleAddPcUserSelect,
+  handleAddPcCharacterSelect,
+  handleAddPcDoneButton,
+} = require("./xpholder/commands/mod/eventAddPc");
 
 /*
 ---------------------------
@@ -165,7 +170,9 @@ client.on("interactionCreate", async (interaction) => {
   if (
     !interaction.isCommand() &&
     !interaction.isAutocomplete() &&
-    !interaction.isButton()
+    !interaction.isButton() &&
+    !interaction.isStringSelectMenu() &&
+    !interaction.isUserSelectMenu()
   ) {
     return;
   }
@@ -252,6 +259,20 @@ client.on("interactionCreate", async (interaction) => {
       )
     ) {
       handleXpCommandButton(gService, interaction);
+    } else if (interaction.customId.startsWith("event_add_pc_done:")) {
+      handleAddPcDoneButton(gService, interaction);
+    }
+  }
+
+  if (interaction.isUserSelectMenu()) {
+    if (interaction.customId.startsWith("event_add_pc_user:")) {
+      handleAddPcUserSelect(gService, interaction);
+    }
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith("event_add_pc_char:")) {
+      handleAddPcCharacterSelect(gService, interaction);
     }
   }
 });
