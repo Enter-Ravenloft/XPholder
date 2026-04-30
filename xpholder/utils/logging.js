@@ -78,6 +78,23 @@ async function logFallbackResolved(interaction, raw, resolvedEventId, eventName)
   _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logFallbackResolved");
 }
 
+async function logEventEditChange(interaction, event, field, oldValue, newValue) {
+  const logEmbed = new EmbedBuilder()
+    .setTitle("Event Edited")
+    .setFields(
+      { inline: false, name: "Event", value: `${event.name} (id ${event.event_id})` },
+      { inline: false, name: "Field", value: `${field}` },
+      { inline: true, name: "Before", value: `${oldValue ?? "—"}` },
+      { inline: true, name: "After", value: `${newValue ?? "—"}` },
+      { inline: false, name: "Editor", value: `${interaction.member.displayName} (${interaction.user.id})` }
+    )
+    .setTimestamp()
+    .setColor(XPHOLDER_COLOUR)
+    .setThumbnail(interaction.client.user.avatarURL());
+
+  _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logEventEditChange");
+}
+
 async function logRPXP(player, characterName, xp, message) {
   const logMessage = `**RPXP Awarded:** ${xp.toFixed(1)} XP to ${characterName} (${player.displayName}) for: ${message.url}`;
 
@@ -126,6 +143,7 @@ module.exports = {
   logCommand,
   logError,
   logFallbackResolved,
+  logEventEditChange,
   logRPXP,
   logRequestXPApproval,
   logRequestXPRejection,
