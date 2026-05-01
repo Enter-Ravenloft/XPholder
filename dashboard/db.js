@@ -662,4 +662,41 @@ async function getPlayerDetail(guildId, playerId) {
   };
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail };
+async function getPlayerHistoryByCharacter(guildId, playerId) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+
+  const res = await pool.query(
+    `SELECT
+      ep.character_id,
+      ep.character_name,
+      e.event_id,
+      e.name,
+      e.tier,
+      e.event_type,
+      e.start_date,
+      e.end_date,
+      dms.dm_names
+     FROM ${schema}.event_participants ep
+     JOIN ${schema}.events e ON ep.event_id = e.event_id
+     LEFT JOIN (
+       SELECT event_id, string_agg(username, ', ') AS dm_names
+       FROM ${schema}.event_dms
+       GROUP BY event_id
+     ) dms ON dms.event_id = e.event_id
+     WHERE ep.player_id = $1 AND e.status = 'completed'
+     ORDER BY ep.character_id, e.start_date DESC;`,
+    [playerId]
+  );
+
+  const byCharacter = new Map();
+  for (const row of res.rows) {
+    if (!byCharacter.has(row.character_id)) {
+      byCharacter.set(row.character_id, []);
+    }
+    byCharacter.get(row.character_id).push(row);
+  }
+  return byCharacter;
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByCharacter };
