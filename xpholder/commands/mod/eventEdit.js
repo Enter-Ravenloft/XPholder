@@ -1,8 +1,191 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
-const { EmbedBuilder } = require("discord.js");
-const { XPHOLDER_COLOUR } = require("../../config.json");
-const { isValidYmd } = require("../../utils/validation");
 const { resolveEventOption } = require("../../utils/resolveEventOption");
+const {
+  parseEventEditCustomId,
+  computeFieldDiff,
+  parseAndValidateModalFields,
+  buildEventEditMessage,
+  buildEventEditModal,
+} = require("../../utils/eventEditHelpers");
+const { logEventEditChange } = require("../../utils/logging");
+
+async function handleEditTypeSelect(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+  const newType = interaction.values[0];
+
+  const before = await guildService.getEvent(eventId);
+  if (!before) {
+    await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    return;
+  }
+  if (before.event_type === newType) {
+    await interaction.deferUpdate();
+    return;
+  }
+
+  await guildService.updateEvent(eventId, { event_type: newType });
+  const after = await guildService.getEvent(eventId);
+  const dms = await guildService.getEventDms(eventId);
+  await interaction.update(buildEventEditMessage(after, dms));
+
+  try {
+    await logEventEditChange(interaction, after, "event_type", before.event_type, newType);
+  } catch (err) {
+    console.error("logEventEditChange failed:", err);
+  }
+}
+
+async function handleEditTierSelect(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+  const newTier = interaction.values[0];
+
+  const before = await guildService.getEvent(eventId);
+  if (!before) {
+    await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    return;
+  }
+  if (before.tier === newTier) {
+    await interaction.deferUpdate();
+    return;
+  }
+
+  await guildService.updateEvent(eventId, { tier: newTier });
+  const after = await guildService.getEvent(eventId);
+  const dms = await guildService.getEventDms(eventId);
+  await interaction.update(buildEventEditMessage(after, dms));
+
+  try {
+    await logEventEditChange(interaction, after, "tier", before.tier, newTier);
+  } catch (err) {
+    console.error("logEventEditChange failed:", err);
+  }
+}
+
+async function handleEditDmSelect(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+  const userId = interaction.values[0];
+
+  const beforeEvent = await guildService.getEvent(eventId);
+  if (!beforeEvent) {
+    await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    return;
+  }
+  const beforeDms = await guildService.getEventDms(eventId);
+  const beforePrimary = beforeDms.find((d) => d.is_primary);
+
+  let member;
+  try {
+    member = await interaction.guild.members.fetch(userId);
+  } catch (err) {
+    console.error("guild.members.fetch failed:", err);
+    await interaction.reply({ content: "That user is no longer in the server.", ephemeral: true });
+    return;
+  }
+
+  if (beforePrimary && beforePrimary.user_id === userId) {
+    await interaction.deferUpdate();
+    return;
+  }
+
+  await guildService.setPrimaryDm(eventId, userId, member.displayName);
+
+  const afterEvent = await guildService.getEvent(eventId);
+  const afterDms = await guildService.getEventDms(eventId);
+  await interaction.update(buildEventEditMessage(afterEvent, afterDms));
+
+  try {
+    await logEventEditChange(
+      interaction,
+      afterEvent,
+      "primary_dm",
+      beforePrimary ? beforePrimary.username : null,
+      member.displayName
+    );
+  } catch (err) {
+    console.error("logEventEditChange failed:", err);
+  }
+}
+
+async function handleEditTextButton(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const event = await guildService.getEvent(parsed.eventId);
+  if (!event) {
+    await interaction.reply({ content: "This event no longer exists.", ephemeral: true });
+    return;
+  }
+  await interaction.showModal(buildEventEditModal(event));
+}
+
+async function handleEditModalSubmit(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+
+  const validation = parseAndValidateModalFields({
+    name: interaction.fields.getTextInputValue("name"),
+    start_date: interaction.fields.getTextInputValue("start_date"),
+    end_date: interaction.fields.getTextInputValue("end_date"),
+    xp_reward: interaction.fields.getTextInputValue("xp_reward"),
+    gp_reward: interaction.fields.getTextInputValue("gp_reward"),
+  });
+
+  if (!validation.valid) {
+    await interaction.reply({ content: validation.errors.join("\n"), ephemeral: true });
+    return;
+  }
+
+  const submitted = validation.parsed;
+  const before = await guildService.getEvent(eventId);
+  if (!before) {
+    await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    return;
+  }
+
+  if (
+    before.status === "active" &&
+    (submitted.end_date != null || submitted.xp_reward != null || submitted.gp_reward != null)
+  ) {
+    await interaction.reply({
+      content: "End date, XP reward, and GP reward can only be edited on completed events. Use /event_end to close an active event.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const current = {
+    name: before.name,
+    start_date: before.start_date.toISOString().split("T")[0],
+    end_date: before.end_date ? before.end_date.toISOString().split("T")[0] : null,
+    xp_reward: before.xp_reward,
+    gp_reward: before.gp_reward,
+  };
+  const diff = computeFieldDiff(current, submitted);
+
+  if (Object.keys(diff).length === 0) {
+    await interaction.reply({ content: "No changes.", ephemeral: true });
+    return;
+  }
+
+  await guildService.updateEvent(eventId, diff);
+  const after = await guildService.getEvent(eventId);
+  const dms = await guildService.getEventDms(eventId);
+  await interaction.update(buildEventEditMessage(after, dms));
+
+  for (const [field, newValue] of Object.entries(diff)) {
+    try {
+      await logEventEditChange(interaction, after, field, current[field], newValue);
+    } catch (err) {
+      console.error("logEventEditChange failed:", err);
+    }
+  }
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -14,75 +197,6 @@ module.exports = {
         .setDescription("The Event To Edit")
         .setAutocomplete(true)
         .setRequired(true)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("name")
-        .setDescription("New Name For The Event")
-        .setRequired(false)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("event_type")
-        .setDescription("New Event Type")
-        .addChoices(
-          { name: "Mission", value: "Mission" },
-          { name: "Adventure", value: "Adventure" },
-          { name: "Skirmish", value: "Skirmish" },
-          { name: "Arena", value: "Arena" },
-          { name: "Discourse", value: "Discourse" },
-          { name: "Arc Quest", value: "Arc Quest" }
-        )
-        .setRequired(false)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("tier")
-        .setDescription("New Tier / Level Bracket")
-        .addChoices(
-          { name: "3-4", value: "3-4" },
-          { name: "5-7", value: "5-7" },
-          { name: "8-10", value: "8-10" },
-          { name: "11-13", value: "11-13" },
-          { name: "14-16", value: "14-16" },
-          { name: "17-20", value: "17-20" },
-          { name: "Open", value: "Open" }
-        )
-        .setRequired(false)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("start_date")
-        .setDescription("New Start Date (YYYY-MM-DD)")
-        .setRequired(false)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("end_date")
-        .setDescription("New End Date (YYYY-MM-DD)")
-        .setRequired(false)
-    )
-    .addIntegerOption((option) =>
-      option
-        .setName("xp_reward")
-        .setDescription("XP Reward")
-        .setMinValue(0)
-        .setMaxValue(1000000)
-        .setRequired(false)
-    )
-    .addIntegerOption((option) =>
-      option
-        .setName("gp_reward")
-        .setDescription("GP Reward")
-        .setMinValue(0)
-        .setMaxValue(1000000)
-        .setRequired(false)
-    )
-    .addUserOption((option) =>
-      option
-        .setName("primary_dm")
-        .setDescription("New Primary DM")
-        .setRequired(false)
     )
     .addBooleanOption((option) =>
       option
@@ -96,9 +210,7 @@ module.exports = {
       interaction.user.id != interaction.guild.ownerId &&
       !guildService.isDev(interaction.member._roles)
     ) {
-      await interaction.editReply(
-        "Sorry, you do not have the right role to use this command."
-      );
+      await interaction.editReply("Sorry, you do not have the right role to use this command.");
       return;
     }
 
@@ -111,88 +223,8 @@ module.exports = {
       return;
     }
 
-    const name = interaction.options.getString("name");
-    const eventType = interaction.options.getString("event_type");
-    const tier = interaction.options.getString("tier");
-    const startDateStr = interaction.options.getString("start_date");
-    const endDateStr = interaction.options.getString("end_date");
-    const xpReward = interaction.options.getInteger("xp_reward");
-    const gpReward = interaction.options.getInteger("gp_reward");
-    const primaryDmUser = interaction.options.getUser("primary_dm");
-
-    if (startDateStr && !isValidYmd(startDateStr)) {
-      await interaction.editReply(
-        "Invalid `start_date`. Use `YYYY-MM-DD` (e.g. `2026-04-15`)."
-      );
-      return;
-    }
-    if (endDateStr && !isValidYmd(endDateStr)) {
-      await interaction.editReply(
-        "Invalid `end_date`. Use `YYYY-MM-DD` (e.g. `2026-04-15`)."
-      );
-      return;
-    }
-    if ((endDateStr || xpReward != null || gpReward != null) && event.status === "active") {
-      await interaction.editReply(
-        "End date, XP reward, and GP reward can only be edited on completed events. Use `/event_end` to close an active event."
-      );
-      return;
-    }
-
-    if (!name && !eventType && !tier && !startDateStr && !endDateStr && xpReward == null && gpReward == null && !primaryDmUser) {
-      await interaction.editReply(
-        "Nothing to update. Provide at least one field to change."
-      );
-      return;
-    }
-
-    const fields = {};
-    if (name) fields.name = name;
-    if (eventType) fields.event_type = eventType;
-    if (tier) fields.tier = tier;
-    if (startDateStr) fields.start_date = startDateStr;
-    if (endDateStr) fields.end_date = endDateStr;
-    if (xpReward != null) fields.xp_reward = xpReward;
-    if (gpReward != null) fields.gp_reward = gpReward;
-
-    await guildService.updateEvent(eventId, fields);
-
-    let newPrimaryDmLabel = null;
-    if (primaryDmUser) {
-      let dmMember;
-      try {
-        dmMember = await interaction.guild.members.fetch(primaryDmUser.id);
-      } catch {
-        await interaction.editReply("That user is no longer in the server.");
-        return;
-      }
-      await guildService.setPrimaryDm(eventId, primaryDmUser.id, dmMember.displayName);
-      newPrimaryDmLabel = `${primaryDmUser}`;
-    }
-
-    const updated = await guildService.getEvent(eventId);
-    const startDate = updated.start_date.toISOString().split("T")[0];
-    const endDate = updated.end_date ? updated.end_date.toISOString().split("T")[0] : null;
-
-    const embedFields = [
-      { inline: true, name: "Name", value: updated.name },
-      { inline: true, name: "Type", value: updated.event_type },
-      { inline: true, name: "Tier", value: updated.tier },
-      { inline: true, name: "Start Date", value: startDate },
-    ];
-    if (endDate) embedFields.push({ inline: true, name: "End Date", value: endDate });
-    if (updated.xp_reward != null) embedFields.push({ inline: true, name: "XP Reward", value: `${updated.xp_reward}` });
-    if (updated.gp_reward != null) embedFields.push({ inline: true, name: "GP Reward", value: `${updated.gp_reward}` });
-    embedFields.push({ inline: true, name: "Event ID", value: `${eventId}` });
-    if (newPrimaryDmLabel) embedFields.push({ inline: true, name: "Primary DM", value: newPrimaryDmLabel });
-
-    const embed = new EmbedBuilder()
-      .setTitle("Event Updated")
-      .setColor(XPHOLDER_COLOUR)
-      .setFields(embedFields)
-      .setTimestamp();
-
-    await interaction.editReply({ embeds: [embed] });
+    const dms = await guildService.getEventDms(eventId);
+    await interaction.editReply(buildEventEditMessage(event, dms));
   },
   async autocomplete(guildService, interaction) {
     const focusedValue = interaction.options.getFocused();
@@ -206,4 +238,9 @@ module.exports = {
       }))
     );
   },
+  handleEditTypeSelect,
+  handleEditTierSelect,
+  handleEditDmSelect,
+  handleEditTextButton,
+  handleEditModalSubmit,
 };
