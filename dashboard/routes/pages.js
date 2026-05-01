@@ -191,6 +191,36 @@ router.get("/players", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/player/:id", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    if (!/^\d+$/.test(playerId)) {
+      return res.render("error", { message: "Invalid player ID." });
+    }
+
+    const hasTable = await hasPlayersTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Player tracking not enabled. Run /apply_registration_update in Discord." });
+    }
+
+    const detail = await getPlayerDetail(req.session.guildId, playerId);
+    if (!detail) {
+      return res.render("error", { message: "Player not found." });
+    }
+
+    const historyByCharacter = await getPlayerHistoryByCharacter(req.session.guildId, playerId);
+
+    res.render("player-detail", {
+      player: detail.player,
+      pcs: detail.pcs,
+      historyByCharacter,
+    });
+  } catch (error) {
+    console.error("Player detail error:", error);
+    res.render("error", { message: "Failed to load player." });
+  }
+});
+
 router.get("/select-guild", requireLogin, async (req, res) => {
   try {
     const registeredGuildIds = await getRegisteredGuilds();
