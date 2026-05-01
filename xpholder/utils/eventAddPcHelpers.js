@@ -36,12 +36,7 @@ function buildAddPcMessage(event, participants, selectedPlayerId, availableChara
       { inline: true, name: "Tier", value: event.tier },
       { inline: true, name: "Status", value: event.status },
       { inline: false, name: "Participants", value: participantList }
-    )
-    .setFooter({
-      text: selectedPlayerId
-        ? "Choose a character below, or choose a different player above. Click Done when finished."
-        : "Choose a player. Click Done when finished.",
-    });
+    );
 
   const userRow = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
