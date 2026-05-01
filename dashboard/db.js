@@ -222,24 +222,32 @@ async function hasEventsTable(guildId) {
   return res.rows[0].exists;
 }
 
+async function loadLevelThresholds(schema) {
+  const res = await pool.query(
+    `SELECT level, xp_to_next FROM ${schema}.levels ORDER BY level;`
+  );
+  const thresholds = [0];
+  let cumulative = 0;
+  for (const row of res.rows) {
+    cumulative += row.xp_to_next;
+    thresholds.push(cumulative);
+  }
+  return thresholds;
+}
+
+function levelFromXp(xp, thresholds) {
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) return Math.min(i + 1, 20);
+  }
+  return 1;
+}
+
 async function getActivePcStats(guildId) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
 
   // Get the levels table to compute level from XP
-  const levelsRes = await pool.query(
-    `SELECT level, xp_to_next FROM ${schema}.levels ORDER BY level;`
-  );
-  const levels = levelsRes.rows;
-
-  // Build cumulative XP thresholds for each level
-  // Level 1 requires 0 cumulative XP, level 2 requires levels[0].xp_to_next, etc.
-  const thresholds = [0]; // level 1 starts at 0
-  let cumulative = 0;
-  for (const row of levels) {
-    cumulative += row.xp_to_next;
-    thresholds.push(cumulative);
-  }
+  const thresholds = await loadLevelThresholds(schema);
 
   // Get characters with their XP, excluding PCs owned by players inactive 90+ days
   const hasPlayers = await hasPlayersTable(guildId);
@@ -249,14 +257,6 @@ async function getActivePcStats(guildId) {
        WHERE p.is_member = TRUE AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
     : `SELECT character_id, xp FROM ${schema}.characters;`;
   const charsRes = await pool.query(charsQuery);
-
-  // Compute level for each character
-  function getLevel(xp) {
-    for (let i = thresholds.length - 1; i >= 0; i--) {
-      if (xp >= thresholds[i]) return Math.min(i + 1, 20);
-    }
-    return 1;
-  }
 
   // Load brackets from character_tiers if configured, otherwise derive from event tiers
   const tiersRes = await pool.query(
@@ -285,7 +285,7 @@ async function getActivePcStats(guildId) {
   for (const b of brackets) charsByBracket[b.label] = new Set();
 
   for (const c of charsRes.rows) {
-    const level = getLevel(c.xp);
+    const level = levelFromXp(c.xp, thresholds);
     for (const b of brackets) {
       if (level >= b.min && level <= b.max) {
         charsByBracket[b.label].add(c.character_id);
@@ -508,4 +508,4 @@ async function getPlayerStats(guildId) {
   return res.rows[0];
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp };
