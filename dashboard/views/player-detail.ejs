@@ -33,7 +33,7 @@
     <p class="text-gray-400">No characters.</p>
   <% } else { %>
     <% pcs.forEach(pc => { %>
-      <% const history = historyByCharacter.get(pc.character_id) || []; %>
+      <% const history = historyByName.get(pc.name) || []; %>
       <section id="pc-<%= pc.character_index %>" class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
           <h2 class="text-xl font-semibold"><%= pc.name %> <span class="text-sm text-gray-400 font-normal">(PC <%= pc.character_index %>)</span></h2>

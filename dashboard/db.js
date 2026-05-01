@@ -662,10 +662,16 @@ async function getPlayerDetail(guildId, playerId) {
   };
 }
 
-async function getPlayerHistoryByCharacter(guildId, playerId) {
+async function getPlayerHistoryByName(guildId, playerId) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
 
+  // Group by event_participants.character_name (the snapshot taken at join time)
+  // rather than character_id. character_id is a player-slot identifier
+  // (playerId-N), and the same slot can be reused for different PCs over time
+  // (retire+recreate, slot reassignment). The snapshot name is the only
+  // period-correct way to attribute an event to a specific PC. PCs that have
+  // since been renamed will not match — accepted trade-off per spec.
   const res = await pool.query(
     `SELECT
       ep.character_id,
@@ -685,18 +691,19 @@ async function getPlayerHistoryByCharacter(guildId, playerId) {
        GROUP BY event_id
      ) dms ON dms.event_id = e.event_id
      WHERE ep.player_id = $1 AND e.status = 'completed'
-     ORDER BY ep.character_id, e.start_date DESC;`,
+     ORDER BY ep.character_name, e.start_date DESC;`,
     [playerId]
   );
 
-  const byCharacter = new Map();
+  const byName = new Map();
   for (const row of res.rows) {
-    if (!byCharacter.has(row.character_id)) {
-      byCharacter.set(row.character_id, []);
+    if (row.character_name == null) continue;
+    if (!byName.has(row.character_name)) {
+      byName.set(row.character_name, []);
     }
-    byCharacter.get(row.character_id).push(row);
+    byName.get(row.character_name).push(row);
   }
-  return byCharacter;
+  return byName;
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByCharacter };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
