@@ -559,4 +559,62 @@ async function getPlayersIndex(guildId, { sort = "active", limit = 100, offset =
   };
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex };
+async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+  const pattern = `%${q}%`;
+
+  const playersRes = await pool.query(
+    `SELECT
+      p.player_id,
+      p.display_name,
+      p.username,
+      p.is_member,
+      p.inactive_days,
+      COUNT(DISTINCT c.character_id) AS pc_count,
+      COUNT(DISTINCT ae.character_id) AS active_event_count
+    FROM ${schema}.players p
+    LEFT JOIN ${schema}.characters c ON c.player_id = p.player_id
+    LEFT JOIN (
+      SELECT ep.character_id
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE p.display_name ILIKE $1 OR p.username ILIKE $1
+    GROUP BY p.player_id
+    ORDER BY p.is_member DESC, LOWER(COALESCE(p.display_name, p.username)) ASC
+    LIMIT $2;`,
+    [pattern, limit]
+  );
+
+  const charactersRes = await pool.query(
+    `SELECT
+      c.character_id,
+      c.character_index,
+      c.name AS character_name,
+      c.player_id,
+      COALESCE(p.display_name, p.username) AS owner_name,
+      ae.event_id AS active_event_id,
+      ae.event_name AS active_event_name
+    FROM ${schema}.characters c
+    LEFT JOIN ${schema}.players p ON p.player_id = c.player_id
+    LEFT JOIN (
+      SELECT ep.character_id, e.event_id, e.name AS event_name
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE c.name ILIKE $1
+    ORDER BY LOWER(c.name) ASC
+    LIMIT $2;`,
+    [pattern, limit]
+  );
+
+  return {
+    players: playersRes.rows,
+    characters: charactersRes.rows,
+  };
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters };
