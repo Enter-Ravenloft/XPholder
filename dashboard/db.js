@@ -508,4 +508,55 @@ async function getPlayerStats(guildId) {
   return res.rows[0];
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp };
+const PLAYER_INDEX_SORT_COLUMNS = {
+  active: "active_event_count DESC",
+  name: "LOWER(COALESCE(p.display_name, p.username)) ASC",
+  inactive: "COALESCE(p.inactive_days, 0) DESC",
+};
+
+async function getPlayersIndex(guildId, { sort = "active", limit = 100, offset = 0 } = {}) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+  const sortClause = PLAYER_INDEX_SORT_COLUMNS[sort] || PLAYER_INDEX_SORT_COLUMNS.active;
+
+  const dataParams = [];
+  let dataQuery = `
+    SELECT
+      p.player_id,
+      p.display_name,
+      p.username,
+      p.is_member,
+      p.inactive_days,
+      COUNT(DISTINCT c.character_id) AS pc_count,
+      COUNT(DISTINCT ae.character_id) AS active_event_count
+    FROM ${schema}.players p
+    LEFT JOIN ${schema}.characters c ON c.player_id = p.player_id
+    LEFT JOIN (
+      SELECT ep.character_id
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE p.is_member = TRUE
+    GROUP BY p.player_id
+    ORDER BY ${sortClause}, LOWER(COALESCE(p.display_name, p.username)) ASC`;
+
+  if (limit !== null) {
+    dataQuery += ` LIMIT $1 OFFSET $2`;
+    dataParams.push(limit, offset);
+  }
+  dataQuery += `;`;
+
+  const dataRes = await pool.query(dataQuery, dataParams);
+
+  const countRes = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM ${schema}.players WHERE is_member = TRUE;`
+  );
+
+  return {
+    rows: dataRes.rows,
+    totalCount: countRes.rows[0].total,
+  };
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex };
