@@ -210,10 +210,23 @@ router.get("/player/:id", requireAuth, async (req, res) => {
 
     const historyByName = await getPlayerHistoryByName(req.session.guildId, playerId);
 
+    const currentNames = new Set(detail.pcs.map((pc) => pc.name));
+    const pcs = detail.pcs.map((pc) => ({
+      ...pc,
+      history: historyByName.get(pc.name) || [],
+    }));
+    const pastCharacters = [];
+    for (const [name, events] of historyByName) {
+      if (!currentNames.has(name)) {
+        pastCharacters.push({ name, events });
+      }
+    }
+    pastCharacters.sort((a, b) => b.events.length - a.events.length);
+
     res.render("player-detail", {
       player: detail.player,
-      pcs: detail.pcs,
-      historyByName,
+      pcs,
+      pastCharacters,
     });
   } catch (error) {
     console.error("Player detail error:", error);
