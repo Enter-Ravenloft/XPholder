@@ -78,6 +78,23 @@ async function logFallbackResolved(interaction, raw, resolvedEventId, eventName)
   _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logFallbackResolved");
 }
 
+async function logEventEditChange(interaction, event, field, oldValue, newValue) {
+  const logEmbed = new EmbedBuilder()
+    .setTitle("Event Edited")
+    .setFields(
+      { inline: false, name: "Event", value: `${event.name} (id ${event.event_id})` },
+      { inline: false, name: "Field", value: `${field}` },
+      { inline: true, name: "Before", value: `${oldValue ?? "—"}` },
+      { inline: true, name: "After", value: `${newValue ?? "—"}` },
+      { inline: false, name: "Editor", value: `${interaction.member.displayName} (${interaction.user.id})` }
+    )
+    .setTimestamp()
+    .setColor(XPHOLDER_COLOUR)
+    .setThumbnail(interaction.client.user.avatarURL());
+
+  _logToDiscord(interaction.guild, { embeds: [logEmbed] }, "logEventEditChange");
+}
+
 async function logEventParticipantAdded(interaction, event, character, playerId, levelInfo) {
   const logEmbed = new EmbedBuilder()
     .setTitle("PC Added To Event")
@@ -144,6 +161,7 @@ module.exports = {
   logCommand,
   logError,
   logFallbackResolved,
+  logEventEditChange,
   logEventParticipantAdded,
   logRPXP,
   logRequestXPApproval,
