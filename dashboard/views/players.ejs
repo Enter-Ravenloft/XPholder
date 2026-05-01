@@ -74,7 +74,7 @@
         </thead>
         <tbody>
           <% indexRows.forEach(row => { %>
-          <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer" onclick="window.location='/player/<%= row.player_id %>'">
+          <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer" data-href="/player/<%= row.player_id %>">
             <td class="px-4 py-3"><a href="/player/<%= row.player_id %>" class="text-indigo-400 hover:text-indigo-300"><%= playerName(row.display_name, row.username) %></a></td>
             <td class="px-4 py-3"><%- statusBadge(row) %></td>
             <td class="px-4 py-3 text-right text-sm text-gray-400"><%= row.pc_count %></td>
@@ -101,5 +101,16 @@
     <% } %>
   <% } %>
 </main>
+
+<script>
+  // Delegated row click: navigate to the row's data-href, but ignore clicks
+  // that already had a real anchor/button target (so the cell-level link wins).
+  document.querySelectorAll('tr[data-href]').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('a, button')) return;
+      window.location = row.dataset.href;
+    });
+  });
+</script>
 
 <%- include('partials/foot') %>
