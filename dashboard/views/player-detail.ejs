@@ -1,0 +1,91 @@
+<%- include('partials/head', { title: playerName(player.display_name, player.username) }) %>
+<%- include('partials/nav') %>
+
+<style>
+  /* :target highlight for deep-linked PC panels.
+     Inline rather than Tailwind so we don't need to rebuild style.css for
+     a single ruleset that no other view uses. */
+  section[id^="pc-"]:target {
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.4);
+  }
+</style>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <a href="/players" class="text-sm text-gray-400 hover:text-gray-200 mb-4 inline-block">&larr; Back to Players</a>
+
+  <div class="flex items-center flex-wrap gap-3 mb-2">
+    <h1 class="text-2xl font-bold"><%= playerName(player.display_name, player.username) %></h1>
+    <% if (player.is_member === false) { %>
+      <span class="text-xs px-2 py-1 rounded-full bg-red-900 text-red-300">left</span>
+    <% } else if (player.inactive_days != null) { %>
+      <span class="text-xs px-2 py-1 rounded-full bg-yellow-900 text-yellow-300"><%= player.inactive_days %>d inactive</span>
+    <% } else { %>
+      <span class="text-xs px-2 py-1 rounded-full bg-green-900 text-green-300">active</span>
+    <% } %>
+  </div>
+  <% if (player.username && player.display_name && player.username !== player.display_name) { %>
+    <p class="text-sm text-gray-500 mb-6">@<%= player.username %></p>
+  <% } else { %>
+    <div class="mb-6"></div>
+  <% } %>
+
+  <% if (pcs.length === 0) { %>
+    <p class="text-gray-400">No characters.</p>
+  <% } else { %>
+    <% pcs.forEach(pc => { %>
+      <% const history = historyByCharacter.get(pc.character_id) || []; %>
+      <section id="pc-<%= pc.character_index %>" class="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <h2 class="text-xl font-semibold"><%= pc.name %> <span class="text-sm text-gray-400 font-normal">(PC <%= pc.character_index %>)</span></h2>
+          <span class="text-sm text-gray-400">Level <%= pc.level %></span>
+        </div>
+
+        <p class="text-sm mb-4">
+          <span class="text-gray-400">Active Event:</span>
+          <% if (pc.active_event_id) { %>
+            <a href="/event/<%= pc.active_event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= pc.active_event_name %></a>
+            <span class="text-gray-400">(<%= pc.active_event_tier %>)</span>
+          <% } else { %>
+            <span class="text-gray-500">—</span>
+          <% } %>
+        </p>
+
+        <h3 class="text-sm font-semibold text-gray-300 mb-2">Event History <span class="text-xs text-gray-500 font-normal">(<%= history.length %>)</span></h3>
+        <% if (history.length === 0) { %>
+          <p class="text-gray-500 text-sm">No completed events yet.</p>
+        <% } else { %>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="text-gray-400 text-sm border-b border-gray-700">
+                <th class="px-2 py-2">Event</th>
+                <th class="px-2 py-2">Type</th>
+                <th class="px-2 py-2">Tier</th>
+                <th class="px-2 py-2">Start</th>
+                <th class="px-2 py-2">End</th>
+                <th class="px-2 py-2">Days</th>
+                <th class="px-2 py-2">DMs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% history.forEach(ev => { %>
+              <tr class="border-b border-gray-700/50">
+                <td class="px-2 py-2"><a href="/event/<%= ev.event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= ev.name %></a></td>
+                <td class="px-2 py-2 text-sm"><%= ev.event_type %></td>
+                <td class="px-2 py-2 text-sm"><%= ev.tier %></td>
+                <td class="px-2 py-2 text-sm text-gray-400 whitespace-nowrap"><%= ev.start_date ? ev.start_date.toISOString().split('T')[0] : '' %></td>
+                <td class="px-2 py-2 text-sm text-gray-400 whitespace-nowrap"><%= ev.end_date ? ev.end_date.toISOString().split('T')[0] : '—' %></td>
+                <td class="px-2 py-2 text-sm text-gray-400 whitespace-nowrap"><%= Math.ceil(((ev.end_date || new Date()) - ev.start_date) / (1000 * 60 * 60 * 24)) %></td>
+                <td class="px-2 py-2 text-sm text-gray-400"><%= ev.dm_names ? ev.dm_names.split(', ').map(n => playerName(n, null)).join(', ') : '—' %></td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </section>
+    <% }) %>
+  <% } %>
+</main>
+
+<%- include('partials/foot') %>
