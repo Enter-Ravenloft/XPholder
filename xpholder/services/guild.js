@@ -575,6 +575,18 @@ class guildService {
     return res.rows.length === 0 ? null : res.rows[0];
   }
 
+  async getActiveEventForCharacter(characterId) {
+    const res = await this.db.query(
+      `SELECT e.event_id, e.name, e.tier
+       FROM ${this.schema}.events e
+       JOIN ${this.schema}.event_participants ep ON ep.event_id = e.event_id
+       WHERE ep.character_id = $1 AND e.status = 'active'
+       LIMIT 1;`,
+      [characterId]
+    );
+    return res.rows[0] || null;
+  }
+
   async getEvents(status = null) {
     if (status) {
       const res = await this.db.query(
