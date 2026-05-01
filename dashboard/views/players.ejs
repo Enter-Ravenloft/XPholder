@@ -96,7 +96,7 @@
             <thead>
               <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
                 <th class="px-4 py-3">Character</th>
-                <th class="px-4 py-3">Owner</th>
+                <th class="px-4 py-3">Player</th>
                 <th class="px-4 py-3">Active Event</th>
               </tr>
             </thead>
@@ -111,8 +111,8 @@
                   <% } %>
                 </td>
                 <td class="px-4 py-3 text-sm">
-                  <% if (row.player_id && row.owner_name) { %>
-                    <a href="/player/<%= row.player_id %>" class="text-gray-300 hover:text-white"><%= row.owner_name %></a>
+                  <% if (row.player_id && (row.owner_display_name || row.owner_username)) { %>
+                    <a href="/player/<%= row.player_id %>" class="text-gray-300 hover:text-white"><%= playerName(row.owner_display_name, row.owner_username) %></a>
                   <% } else { %>
                     <span class="text-gray-500">Unknown</span>
                   <% } %>

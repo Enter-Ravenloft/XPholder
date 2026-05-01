@@ -581,7 +581,15 @@ async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
       JOIN ${schema}.events e ON ep.event_id = e.event_id
       WHERE e.status = 'active'
     ) ae ON ae.character_id = c.character_id
-    WHERE p.display_name ILIKE $1 OR p.username ILIKE $1
+    -- Match against the dashboard's rendered name, not the raw display_name.
+    -- The xpholder/utils/playerName formatter strips trailing [tags], (parens),
+    -- timezone suffixes, etc. We approximate it in SQL so a search for "fynn"
+    -- doesn't match a player whose display_name is "Valnar [Fynn]". Two passes:
+    -- 1) drop everything from the first "[ ( | ¦ │ { 《" onward
+    -- 2) ALSO check leading "[Tag]" content (formatter promotes that to the name)
+    WHERE TRIM(REGEXP_REPLACE(COALESCE(p.display_name, ''), '[\\[(|¦│{《].*$', '')) ILIKE $1
+       OR COALESCE(SUBSTRING(p.display_name FROM '^\\[([^\\]]+)\\]'), '') ILIKE $1
+       OR p.username ILIKE $1
     GROUP BY p.player_id
     ORDER BY p.is_member DESC, LOWER(COALESCE(p.display_name, p.username)) ASC
     LIMIT $2;`,
@@ -594,7 +602,8 @@ async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
       c.character_index,
       c.name AS character_name,
       c.player_id,
-      COALESCE(p.display_name, p.username) AS owner_name,
+      p.display_name AS owner_display_name,
+      p.username AS owner_username,
       ae.event_id AS active_event_id,
       ae.event_name AS active_event_name
     FROM ${schema}.characters c
