@@ -44,6 +44,11 @@ const {
   handleRequestXpCommandButton,
 } = require("./xpholder/commands/everyone/requestXp.js");
 const {
+  handleAddPcUserSelect,
+  handleAddPcCharacterSelect,
+  handleAddPcDoneButton,
+} = require("./xpholder/commands/mod/eventAddPc");
+const {
   handleEditTypeSelect,
   handleEditTierSelect,
   handleEditDmSelect,
@@ -262,22 +267,28 @@ client.on("interactionCreate", async (interaction) => {
       )
     ) {
       handleXpCommandButton(gService, interaction);
+    } else if (interaction.customId.startsWith("event_add_pc_done:")) {
+      handleAddPcDoneButton(gService, interaction);
     } else if (interaction.customId.startsWith("event_edit_text:")) {
       handleEditTextButton(gService, interaction);
     }
   }
 
-  if (interaction.isStringSelectMenu()) {
-    if (interaction.customId.startsWith("event_edit_type:")) {
-      handleEditTypeSelect(gService, interaction);
-    } else if (interaction.customId.startsWith("event_edit_tier:")) {
-      handleEditTierSelect(gService, interaction);
+  if (interaction.isUserSelectMenu()) {
+    if (interaction.customId.startsWith("event_add_pc_user:")) {
+      handleAddPcUserSelect(gService, interaction);
+    } else if (interaction.customId.startsWith("event_edit_dm:")) {
+      handleEditDmSelect(gService, interaction);
     }
   }
 
-  if (interaction.isUserSelectMenu()) {
-    if (interaction.customId.startsWith("event_edit_dm:")) {
-      handleEditDmSelect(gService, interaction);
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith("event_add_pc_char:")) {
+      handleAddPcCharacterSelect(gService, interaction);
+    } else if (interaction.customId.startsWith("event_edit_type:")) {
+      handleEditTypeSelect(gService, interaction);
+    } else if (interaction.customId.startsWith("event_edit_tier:")) {
+      handleEditTierSelect(gService, interaction);
     }
   }
 
