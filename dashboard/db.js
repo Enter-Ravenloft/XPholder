@@ -617,4 +617,49 @@ async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
   };
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters };
+async function getPlayerDetail(guildId, playerId) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+
+  const playerRes = await pool.query(
+    `SELECT player_id, display_name, username, is_member, inactive_days, first_seen, last_seen
+     FROM ${schema}.players WHERE player_id = $1;`,
+    [playerId]
+  );
+  if (playerRes.rows.length === 0) return null;
+
+  const thresholds = await loadLevelThresholds(schema);
+
+  const pcsRes = await pool.query(
+    `SELECT
+      c.character_id,
+      c.character_index,
+      c.name,
+      c.xp,
+      ae.event_id   AS active_event_id,
+      ae.event_name AS active_event_name,
+      ae.event_tier AS active_event_tier
+    FROM ${schema}.characters c
+    LEFT JOIN (
+      SELECT ep.character_id, e.event_id, e.name AS event_name, e.tier AS event_tier
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE c.player_id = $1
+    ORDER BY c.character_index ASC;`,
+    [playerId]
+  );
+
+  const pcs = pcsRes.rows.map((row) => ({
+    ...row,
+    level: levelFromXp(row.xp, thresholds),
+  }));
+
+  return {
+    player: playerRes.rows[0],
+    pcs,
+  };
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail };
