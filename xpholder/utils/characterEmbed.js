@@ -92,7 +92,7 @@ function buildCharacterEmbed(guildService, player, characterObj, activeEvent = n
   if (activeEvent) {
     characterEmbed.addFields({
       inline: false,
-      name: "Active Event",
+      name: "🟢 Active Event",
       value: `${activeEvent.name} (${activeEvent.tier})`,
     });
   }
