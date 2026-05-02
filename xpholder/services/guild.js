@@ -427,6 +427,12 @@ class guildService {
       await this.db.query(
         `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS character_name TEXT;`
       );
+      // original_tier preserves the pre-2024 CSV bracket (e.g. "3-5") for
+      // legacy events; tier itself holds the closest current bracket so
+      // grouping/filtering keeps the new vocabulary.
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS original_tier TEXT;`
+      );
     }
     console.log("Finished updateRegistration");
   }
@@ -518,6 +524,7 @@ class guildService {
         xp_reward INTEGER,
         gp_reward INTEGER,
         status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+        original_tier TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );`
     );

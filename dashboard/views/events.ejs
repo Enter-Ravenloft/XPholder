@@ -74,7 +74,13 @@
             <a href="/event/<%= event.event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= event.name %></a>
           </td>
           <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.event_type %></td>
-          <td class="px-4 py-3 text-sm whitespace-nowrap"><%= event.tier %></td>
+          <td class="px-4 py-3 text-sm whitespace-nowrap">
+            <% if (event.original_tier) { %>
+              <%= event.original_tier %> <span class="text-xs text-gray-500">(legacy)</span>
+            <% } else { %>
+              <%= event.tier %>
+            <% } %>
+          </td>
           <td class="px-4 py-3 whitespace-nowrap">
             <span class="text-xs px-2 py-1 rounded-full <%= event.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300' %>">
               <%= event.status %>
