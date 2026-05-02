@@ -1,191 +1,56 @@
 <%- include('partials/head', { title: 'Players' }) %>
 <%- include('partials/nav') %>
 
-<%
-  function buildUrl(overrides) {
-    const defaults = { q: '', sort: 'active', per_page: 100, page: 1 };
-    const p = {
-      q: q || undefined,
-      sort: sort,
-      per_page: perPage,
-      page: page,
-      ...overrides,
-    };
-    const qs = Object.entries(p)
-      .filter(([k, v]) => v !== undefined && v !== '' && v !== defaults[k])
-      .map(([k, v]) => k + '=' + encodeURIComponent(v))
-      .join('&');
-    return '/players' + (qs ? '?' + qs : '');
-  }
-
-  function statusBadge(row) {
-    if (row.is_member === false) {
-      return '<span class="text-xs text-red-400">(left)</span>';
-    }
-    if (row.inactive_days != null) {
-      return '<span class="text-xs text-yellow-500">' + row.inactive_days + 'd inactive</span>';
-    }
-    return '<span class="text-xs text-green-400">active</span>';
-  }
-%>
-
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
-    <h1 class="text-2xl font-bold">Players <span class="text-lg text-gray-400 font-normal">(<%= totalCount %>)</span></h1>
-    <div class="flex flex-wrap items-center gap-4">
-      <form method="get" action="/players" class="flex items-center">
-        <input type="text" name="q" value="<%= q %>" placeholder="Search by player or PC name" autofocus
-          class="bg-gray-800 border border-gray-700 rounded px-3 py-1 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
-          autocomplete="off" />
-      </form>
-      <% if (!q) { %>
-        <div class="flex space-x-2">
-          <a href="<%= buildUrl({ sort: 'active', page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= sort === 'active' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Most Active Events</a>
-          <a href="<%= buildUrl({ sort: 'name', page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= sort === 'name' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Name</a>
-          <a href="<%= buildUrl({ sort: 'inactive', page: 1 }) %>" class="px-3 py-1 rounded text-sm <%= sort === 'inactive' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Most Inactive</a>
-        </div>
-        <div class="flex items-center space-x-2 text-sm text-gray-400">
-          <span>Show:</span>
-          <% [100, 250, 500, 'all'].forEach(opt => { %>
-            <a href="<%= buildUrl({ per_page: opt, page: 1 }) %>" class="px-2 py-1 rounded <%= String(perPage) === String(opt) ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>"><%= opt %></a>
-          <% }) %>
-        </div>
-      <% } %>
-    </div>
+  <h1 class="text-2xl font-bold mb-4">Player &amp; PC Search</h1>
+
+  <form method="get" action="/players" class="mb-6">
+    <input type="text" name="q" id="player-search-input" value="<%= q %>" placeholder="Search by player or PC name" autofocus
+      class="w-full max-w-lg bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-100 focus:outline-none focus:border-indigo-500"
+      autocomplete="off" />
+  </form>
+
+  <div id="search-results">
+    <%- include('partials/players-search-results', { q, searchResults }) %>
   </div>
-
-  <% if (q && q.length === 1) { %>
-    <p class="text-gray-400 mb-6">Type at least 2 characters to search.</p>
-  <% } %>
-
-  <% if (q && q.length >= 2 && searchResults) { %>
-    <% const noResults = searchResults.players.length === 0 && searchResults.characters.length === 0; %>
-    <% if (noResults) { %>
-      <p class="text-gray-400 mb-6">No results for "<%= q %>".</p>
-    <% } else { %>
-      <% if (searchResults.players.length > 0) { %>
-        <h2 class="text-lg font-semibold mb-3">Players matching "<%= q %>" <span class="text-sm text-gray-400 font-normal">(<%= searchResults.players.length %>)</span></h2>
-        <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto mb-8">
-          <table class="w-full text-left">
-            <thead>
-              <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
-                <th class="px-4 py-3">Player</th>
-                <th class="px-4 py-3">Status</th>
-                <th class="px-4 py-3 text-right">PCs</th>
-                <th class="px-4 py-3 text-right">In Active Events</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% searchResults.players.forEach(row => { %>
-              <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer" data-href="/player/<%= row.player_id %>">
-                <td class="px-4 py-3"><a href="/player/<%= row.player_id %>" class="text-indigo-400 hover:text-indigo-300"><%= playerName(row.display_name, row.username) %></a></td>
-                <td class="px-4 py-3"><%- statusBadge(row) %></td>
-                <td class="px-4 py-3 text-right text-sm text-gray-400"><%= row.pc_count %></td>
-                <td class="px-4 py-3 text-right text-sm <%= parseInt(row.active_event_count) > 0 ? 'text-green-400 font-bold' : 'text-gray-500' %>"><%= row.active_event_count %></td>
-              </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-
-      <% if (searchResults.characters.length > 0) { %>
-        <h2 class="text-lg font-semibold mb-3">PCs matching "<%= q %>" <span class="text-sm text-gray-400 font-normal">(<%= searchResults.characters.length %>)</span></h2>
-        <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto mb-8">
-          <table class="w-full text-left">
-            <thead>
-              <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
-                <th class="px-4 py-3">Character</th>
-                <th class="px-4 py-3">Player</th>
-                <th class="px-4 py-3">Active Event</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% searchResults.characters.forEach(row => { %>
-              <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
-                <td class="px-4 py-3">
-                  <% if (row.player_id) { %>
-                    <a href="/player/<%= row.player_id %>#pc-<%= row.character_index %>" class="text-indigo-400 hover:text-indigo-300"><%= row.character_name %></a>
-                  <% } else { %>
-                    <span class="text-gray-300"><%= row.character_name %></span>
-                  <% } %>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  <% if (row.player_id && (row.owner_display_name || row.owner_username)) { %>
-                    <a href="/player/<%= row.player_id %>" class="text-gray-300 hover:text-white"><%= playerName(row.owner_display_name, row.owner_username) %></a>
-                  <% } else { %>
-                    <span class="text-gray-500">Unknown</span>
-                  <% } %>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  <% if (row.active_event_id) { %>
-                    <a href="/event/<%= row.active_event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= row.active_event_name %></a>
-                  <% } else { %>
-                    <span class="text-gray-500">—</span>
-                  <% } %>
-                </td>
-              </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    <% } %>
-  <% } %>
-
-  <% if (!q || q.length < 2) { %>
-    <% if (indexRows.length === 0) { %>
-      <p class="text-gray-400">No players found.</p>
-    <% } else { %>
-    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto">
-      <table class="w-full text-left">
-        <thead>
-          <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
-            <th class="px-4 py-3">Player</th>
-            <th class="px-4 py-3">Status</th>
-            <th class="px-4 py-3 text-right">PCs</th>
-            <th class="px-4 py-3 text-right">In Active Events</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% indexRows.forEach(row => { %>
-          <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer" data-href="/player/<%= row.player_id %>">
-            <td class="px-4 py-3"><a href="/player/<%= row.player_id %>" class="text-indigo-400 hover:text-indigo-300"><%= playerName(row.display_name, row.username) %></a></td>
-            <td class="px-4 py-3"><%- statusBadge(row) %></td>
-            <td class="px-4 py-3 text-right text-sm text-gray-400"><%= row.pc_count %></td>
-            <td class="px-4 py-3 text-right text-sm <%= parseInt(row.active_event_count) > 0 ? 'text-green-400 font-bold' : 'text-gray-500' %>"><%= row.active_event_count %></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-
-    <% if (totalPages > 1) { %>
-    <div class="flex items-center justify-between mt-4">
-      <p class="text-sm text-gray-400">Page <%= page %> of <%= totalPages %></p>
-      <div class="flex space-x-2">
-        <% if (page > 1) { %>
-          <a href="<%= buildUrl({ page: page - 1 }) %>" class="px-3 py-1 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600">&larr; Prev</a>
-        <% } %>
-        <% if (page < totalPages) { %>
-          <a href="<%= buildUrl({ page: page + 1 }) %>" class="px-3 py-1 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600">Next &rarr;</a>
-        <% } %>
-      </div>
-    </div>
-    <% } %>
-    <% } %>
-  <% } %>
 </main>
 
 <script>
-  // Delegated row click: navigate to the row's data-href, but ignore clicks
-  // that already had a real anchor/button target (so the cell-level link wins).
-  document.querySelectorAll('tr[data-href]').forEach(function (row) {
-    row.addEventListener('click', function (e) {
-      if (e.target.closest('a, button')) return;
-      window.location = row.dataset.href;
-    });
+  // Click delegation for [data-href] rows. Document-level so it survives DOM
+  // replacements from the typeahead fetch below.
+  document.addEventListener('click', function (e) {
+    const row = e.target.closest('tr[data-href]');
+    if (!row) return;
+    if (e.target.closest('a, button')) return;
+    window.location = row.dataset.href;
   });
+
+  // Live search: debounce the input, fetch the results fragment from the API,
+  // and swap it into #search-results. Falls back to form submission if JS
+  // is disabled or the fetch fails.
+  (function () {
+    const input = document.getElementById('player-search-input');
+    const container = document.getElementById('search-results');
+    if (!input || !container) return;
+    let timer = null;
+    let inflight = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(async function () {
+        if (inflight) inflight.abort();
+        inflight = new AbortController();
+        try {
+          const res = await fetch(
+            '/api/players/search?q=' + encodeURIComponent(input.value),
+            { signal: inflight.signal, headers: { 'Accept': 'text/html' } }
+          );
+          if (res.ok) container.innerHTML = await res.text();
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error(err);
+        }
+      }, 200);
+    });
+  })();
 </script>
 
 <%- include('partials/foot') %>

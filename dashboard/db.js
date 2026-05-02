@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const { playerName } = require("../xpholder/utils/playerName");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -508,62 +509,22 @@ async function getPlayerStats(guildId) {
   return res.rows[0];
 }
 
-const PLAYER_INDEX_SORT_COLUMNS = {
-  active: "active_event_count DESC",
-  name: "LOWER(COALESCE(p.display_name, p.username)) ASC",
-  inactive: "COALESCE(p.inactive_days, 0) DESC",
-};
-
-async function getPlayersIndex(guildId, { sort = "active", limit = 100, offset = 0 } = {}) {
-  validateGuildId(guildId);
-  const schema = `guild${guildId}`;
-  const sortClause = PLAYER_INDEX_SORT_COLUMNS[sort] || PLAYER_INDEX_SORT_COLUMNS.active;
-
-  const dataParams = [];
-  let dataQuery = `
-    SELECT
-      p.player_id,
-      p.display_name,
-      p.username,
-      p.is_member,
-      p.inactive_days,
-      COUNT(DISTINCT c.character_id) AS pc_count,
-      COUNT(DISTINCT ae.character_id) AS active_event_count
-    FROM ${schema}.players p
-    LEFT JOIN ${schema}.characters c ON c.player_id = p.player_id
-    LEFT JOIN (
-      SELECT ep.character_id
-      FROM ${schema}.event_participants ep
-      JOIN ${schema}.events e ON ep.event_id = e.event_id
-      WHERE e.status = 'active'
-    ) ae ON ae.character_id = c.character_id
-    WHERE p.is_member = TRUE
-    GROUP BY p.player_id
-    ORDER BY ${sortClause}, LOWER(COALESCE(p.display_name, p.username)) ASC`;
-
-  if (limit !== null) {
-    dataQuery += ` LIMIT $1 OFFSET $2`;
-    dataParams.push(limit, offset);
-  }
-  dataQuery += `;`;
-
-  const dataRes = await pool.query(dataQuery, dataParams);
-
-  const countRes = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM ${schema}.players WHERE is_member = TRUE;`
-  );
-
-  return {
-    rows: dataRes.rows,
-    totalCount: countRes.rows[0].total,
-  };
-}
-
 async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
   const pattern = `%${q}%`;
+  const qLower = q.toLowerCase();
 
+  // Players: SQL is a broad ILIKE on raw display_name to gather candidates,
+  // then the JS post-filter applies the canonical xpholder/utils/playerName
+  // formatter and keeps only rows whose RENDERED name actually contains the
+  // query. This is the single source of truth for "what the dashboard shows
+  // as a player's name" — previously we tried to mirror the formatter in
+  // SQL but kept missing edge cases (e.g. "NechamaM Ayala Wiz 9 UTC-8"
+  // strips to "NechamaM" via the formatter's "split-on-space-when-has-digit"
+  // rule, which is awkward to express in SQL). Bumping the SQL fetch to
+  // ~4× the result limit absorbs noise lost to the post-filter.
+  const sqlFetch = limit * 4;
   const playersRes = await pool.query(
     `SELECT
       p.player_id,
@@ -581,20 +542,20 @@ async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
       JOIN ${schema}.events e ON ep.event_id = e.event_id
       WHERE e.status = 'active'
     ) ae ON ae.character_id = c.character_id
-    -- Match against the dashboard's rendered name, not the raw display_name.
-    -- The xpholder/utils/playerName formatter strips trailing [tags], (parens),
-    -- timezone suffixes, etc. We approximate it in SQL so a search for "fynn"
-    -- doesn't match a player whose display_name is "Valnar [Fynn]". Two passes:
-    -- 1) drop everything from the first "[ ( | ¦ │ { 《" onward
-    -- 2) ALSO check leading "[Tag]" content (formatter promotes that to the name)
-    WHERE TRIM(REGEXP_REPLACE(COALESCE(p.display_name, ''), '[\\[(|¦│{《].*$', '')) ILIKE $1
-       OR COALESCE(SUBSTRING(p.display_name FROM '^\\[([^\\]]+)\\]'), '') ILIKE $1
-       OR p.username ILIKE $1
+    WHERE COALESCE(p.display_name, '') ILIKE $1
+       OR COALESCE(p.username, '') ILIKE $1
     GROUP BY p.player_id
     ORDER BY p.is_member DESC, LOWER(COALESCE(p.display_name, p.username)) ASC
     LIMIT $2;`,
-    [pattern, limit]
+    [pattern, sqlFetch]
   );
+
+  const filteredPlayers = playersRes.rows
+    .filter((row) => {
+      const formatted = playerName(row.display_name, row.username);
+      return formatted && formatted.toLowerCase().includes(qLower);
+    })
+    .slice(0, limit);
 
   const charactersRes = await pool.query(
     `SELECT
@@ -621,7 +582,7 @@ async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
   );
 
   return {
-    players: playersRes.rows,
+    players: filteredPlayers,
     characters: charactersRes.rows,
   };
 }
@@ -715,4 +676,4 @@ async function getPlayerHistoryByName(guildId, playerId) {
   return byName;
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };

@@ -1,0 +1,90 @@
+<%
+  function statusBadge(row) {
+    if (row.is_member === false) {
+      return '<span class="text-xs text-red-400">(left)</span>';
+    }
+    if (row.inactive_days != null) {
+      return '<span class="text-xs text-yellow-500">' + row.inactive_days + 'd inactive</span>';
+    }
+    return '<span class="text-xs text-green-400">active</span>';
+  }
+%>
+
+<% if (!q) { %>
+  <p class="text-gray-500 text-sm">Type a player or PC name above to search.</p>
+<% } else if (q.length === 1) { %>
+  <p class="text-gray-400">Type at least 2 characters to search.</p>
+<% } else if (searchResults) { %>
+  <% const noResults = searchResults.players.length === 0 && searchResults.characters.length === 0; %>
+  <% if (noResults) { %>
+    <p class="text-gray-400">No results for "<%= q %>".</p>
+  <% } else { %>
+    <% if (searchResults.players.length > 0) { %>
+      <h2 class="text-lg font-semibold mb-3">Players matching "<%= q %>" <span class="text-sm text-gray-400 font-normal">(<%= searchResults.players.length %>)</span></h2>
+      <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto mb-8">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
+              <th class="px-4 py-3">Player</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">PCs</th>
+              <th class="px-4 py-3 text-right">In Active Events</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% searchResults.players.forEach(row => { %>
+            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer" data-href="/player/<%= row.player_id %>">
+              <td class="px-4 py-3"><a href="/player/<%= row.player_id %>" class="text-indigo-400 hover:text-indigo-300"><%= playerName(row.display_name, row.username) %></a></td>
+              <td class="px-4 py-3"><%- statusBadge(row) %></td>
+              <td class="px-4 py-3 text-right text-sm text-gray-400"><%= row.pc_count %></td>
+              <td class="px-4 py-3 text-right text-sm <%= parseInt(row.active_event_count) > 0 ? 'text-green-400 font-bold' : 'text-gray-500' %>"><%= row.active_event_count %></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <% if (searchResults.characters.length > 0) { %>
+      <h2 class="text-lg font-semibold mb-3">PCs matching "<%= q %>" <span class="text-sm text-gray-400 font-normal">(<%= searchResults.characters.length %>)</span></h2>
+      <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-x-auto mb-8">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="text-gray-400 text-sm border-b border-gray-700 bg-gray-800/50">
+              <th class="px-4 py-3">Character</th>
+              <th class="px-4 py-3">Player</th>
+              <th class="px-4 py-3">Active Event</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% searchResults.characters.forEach(row => { %>
+            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+              <td class="px-4 py-3">
+                <% if (row.player_id) { %>
+                  <a href="/player/<%= row.player_id %>#pc-<%= row.character_index %>" class="text-indigo-400 hover:text-indigo-300"><%= row.character_name %></a>
+                <% } else { %>
+                  <span class="text-gray-300"><%= row.character_name %></span>
+                <% } %>
+              </td>
+              <td class="px-4 py-3 text-sm">
+                <% if (row.player_id && (row.owner_display_name || row.owner_username)) { %>
+                  <a href="/player/<%= row.player_id %>" class="text-gray-300 hover:text-white"><%= playerName(row.owner_display_name, row.owner_username) %></a>
+                <% } else { %>
+                  <span class="text-gray-500">Unknown</span>
+                <% } %>
+              </td>
+              <td class="px-4 py-3 text-sm">
+                <% if (row.active_event_id) { %>
+                  <a href="/event/<%= row.active_event_id %>" class="text-indigo-400 hover:text-indigo-300"><%= row.active_event_name %></a>
+                <% } else { %>
+                  <span class="text-gray-500">—</span>
+                <% } %>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  <% } %>
+<% } %>

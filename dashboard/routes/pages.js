@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
-const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, getPlayersIndex, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName } = require("../db");
+const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName } = require("../db");
 const { playerName } = require("../../xpholder/utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
@@ -152,39 +152,11 @@ router.get("/players", requireAuth, async (req, res) => {
     }
 
     const q = (req.query.q || "").trim();
-    const sort = req.query.sort || "active";
-    const perPage = req.query.per_page === "all" ? null : parseInt(req.query.per_page) || 100;
-    const page = parseInt(req.query.page) || 1;
+    const searchResults = q.length >= 2
+      ? await searchPlayersAndCharacters(req.session.guildId, q)
+      : null;
 
-    let searchResults = null;
-    if (q.length >= 2) {
-      searchResults = await searchPlayersAndCharacters(req.session.guildId, q);
-    }
-
-    let indexRows = [];
-    let totalCount = 0;
-    let totalPages = 1;
-    if (q.length < 2) {
-      const indexResult = await getPlayersIndex(req.session.guildId, {
-        sort,
-        limit: perPage,
-        offset: perPage ? (page - 1) * perPage : 0,
-      });
-      indexRows = indexResult.rows;
-      totalCount = indexResult.totalCount;
-      totalPages = perPage ? Math.ceil(totalCount / perPage) : 1;
-    }
-
-    res.render("players", {
-      q,
-      sort,
-      perPage: perPage || "all",
-      page,
-      totalPages,
-      totalCount,
-      indexRows,
-      searchResults,
-    });
+    res.render("players", { q, searchResults });
   } catch (error) {
     console.error("Players page error:", error);
     res.render("error", { message: "Failed to load players." });
