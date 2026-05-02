@@ -13,7 +13,7 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <a href="/players" class="text-sm text-gray-400 hover:text-gray-200 mb-4 inline-block">&larr; Back to Players</a>
 
-  <div class="flex items-center flex-wrap gap-3 mb-2">
+  <div class="flex items-center flex-wrap gap-3 mb-6">
     <h1 class="text-2xl font-bold"><%= playerName(player.display_name, player.username) %></h1>
     <% if (player.is_member === false) { %>
       <span class="text-xs px-2 py-1 rounded-full bg-red-900 text-red-300">left</span>
@@ -23,11 +23,6 @@
       <span class="text-xs px-2 py-1 rounded-full bg-green-900 text-green-300">active</span>
     <% } %>
   </div>
-  <% if (player.username && player.display_name && player.username !== player.display_name) { %>
-    <p class="text-sm text-gray-500 mb-6">@<%= player.username %></p>
-  <% } else { %>
-    <div class="mb-6"></div>
-  <% } %>
 
   <% if (pcs.length === 0 && pastCharacters.length === 0) { %>
     <p class="text-gray-400">No characters.</p>
@@ -57,7 +52,16 @@
           <p class="text-gray-500 text-sm">No completed events yet.</p>
         <% } else { %>
         <div class="overflow-x-auto">
-          <table class="w-full text-left">
+          <table class="w-full table-fixed text-left">
+            <colgroup>
+              <col style="width: 26%">
+              <col style="width: 11%">
+              <col style="width: 8%">
+              <col style="width: 11%">
+              <col style="width: 11%">
+              <col style="width: 7%">
+              <col style="width: 26%">
+            </colgroup>
             <thead>
               <tr class="text-gray-400 text-sm border-b border-gray-700">
                 <th class="px-2 py-2">Event</th>
@@ -91,7 +95,6 @@
 
   <% if (pastCharacters.length > 0) { %>
     <h2 class="text-lg font-semibold text-gray-300 mt-8 mb-4">Past Characters <span class="text-sm text-gray-500 font-normal">(<%= pastCharacters.length %>)</span></h2>
-    <p class="text-xs text-gray-500 mb-4">Characters this player has used in events but who don't match any current PC. Includes retired PCs and PCs renamed since the events were played.</p>
     <% pastCharacters.forEach(pc => { %>
       <section class="bg-gray-800/40 rounded-lg border border-gray-700/60 p-6 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -100,7 +103,16 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full text-left">
+          <table class="w-full table-fixed text-left">
+            <colgroup>
+              <col style="width: 26%">
+              <col style="width: 11%">
+              <col style="width: 8%">
+              <col style="width: 11%">
+              <col style="width: 11%">
+              <col style="width: 7%">
+              <col style="width: 26%">
+            </colgroup>
             <thead>
               <tr class="text-gray-400 text-sm border-b border-gray-700">
                 <th class="px-2 py-2">Event</th>

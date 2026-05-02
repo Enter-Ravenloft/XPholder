@@ -221,7 +221,9 @@ router.get("/player/:id", requireAuth, async (req, res) => {
         pastCharacters.push({ name, events });
       }
     }
-    pastCharacters.sort((a, b) => b.events.length - a.events.length);
+    // Each character's events are already start_date DESC from the SQL,
+    // so events[0] is the most recent. Sort characters by that date, newest first.
+    pastCharacters.sort((a, b) => b.events[0].start_date - a.events[0].start_date);
 
     res.render("player-detail", {
       player: detail.player,
