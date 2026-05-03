@@ -19,7 +19,13 @@
     </div>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Tier</p>
-      <p class="text-lg font-semibold"><%= event.tier %></p>
+      <p class="text-lg font-semibold">
+        <% if (event.original_tier) { %>
+          <%= event.original_tier %> <span class="text-sm text-gray-400 font-normal">(legacy)</span>
+        <% } else { %>
+          <%= event.tier %>
+        <% } %>
+      </p>
     </div>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Start Date</p>
