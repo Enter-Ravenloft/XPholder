@@ -370,6 +370,12 @@ async function buildCharacterEmbeds(guildService, player) {
   let characterEmbeds = [];
   const playerCharacters = await guildService.getAllCharacters(player.id);
 
+  const activeEvents = await Promise.all(
+    playerCharacters.map((c) =>
+      guildService.getActiveEventForCharacter(c.character_id)
+    )
+  );
+
   let index = 0;
   for (let character of playerCharacters) {
     if (!character["picture_url"]) {
@@ -377,7 +383,12 @@ async function buildCharacterEmbeds(guildService, player) {
     }
 
     characterEmbeds.push(
-      buildCharacterEmbed(guildService, player, character, index)
+      buildCharacterEmbed(
+        guildService,
+        player,
+        character,
+        activeEvents[index]
+      )
     );
 
     index++;

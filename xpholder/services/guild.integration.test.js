@@ -495,6 +495,37 @@ describe("events", () => {
     const event = await gService.getEvent(id);
     expect(event.name).toBe("Original");
   });
+
+  describe("getActiveEventForCharacter", () => {
+    it("returns the event row when the character is in an active event", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Boss Fight", tier: "5-7" });
+      await gService.addEventParticipant(eventId, "char-1", "p1", "Char One", 3, 0);
+
+      const result = await gService.getActiveEventForCharacter("char-1");
+      expect(result).toMatchObject({
+        event_id: eventId,
+        name: "Boss Fight",
+        tier: "5-7",
+      });
+    });
+
+    it("returns null when the character is not in any event", async () => {
+      const { gService } = ctx;
+      const result = await gService.getActiveEventForCharacter("nobody");
+      expect(result).toBeNull();
+    });
+
+    it("returns null when the character is only in a completed event", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Old Quest" });
+      await gService.addEventParticipant(eventId, "char-2", "p1", "Char Two", 3, 0);
+      await gService.endEvent(eventId, "2026-02-01", 100, 50);
+
+      const result = await gService.getActiveEventForCharacter("char-2");
+      expect(result).toBeNull();
+    });
+  });
 });
 
 describe("event_participants", () => {

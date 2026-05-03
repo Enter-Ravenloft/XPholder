@@ -6,16 +6,16 @@ const {
   XPHOLDER_COLOUR,
   XPHOLDER_LEVEL_UP_COLOUR,
 } = require("../config.json");
-function buildCharacterEmbed(guildService, player, characterObj) {
+function buildCharacterEmbed(guildService, player, characterObj, activeEvent = null) {
   /*
       Parameters
       ----------
       guildService : object
           /services/guild.js
-  
+
       player : object
           GuildMember - https://discord.js.org/#/docs/discord.js/main/class/GuildMember
-  
+
       characterObj : object
       {
           "character_id"   : player_id-character_index
@@ -26,7 +26,7 @@ function buildCharacterEmbed(guildService, player, characterObj) {
           "player_id"      : "881210880887513139"
           "xp"             : 0
       }
-  
+
       Returns
       -------
       characterEmbed : obj
@@ -87,7 +87,17 @@ function buildCharacterEmbed(guildService, player, characterObj) {
         name: "Character No.",
         value: `${characterObj["character_index"]}`,
       }
-    )
+    );
+
+  if (activeEvent) {
+    characterEmbed.addFields({
+      inline: false,
+      name: "🟢 Active Event",
+      value: `${activeEvent.name} (${activeEvent.tier})`,
+    });
+  }
+
+  characterEmbed
     .setFooter({
       text: `Dont Like What You See? Try /edit_character (${characterObj["character_index"]}/${guildService.config["characterCount"]})`,
     })
