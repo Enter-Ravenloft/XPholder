@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const { playerName } = require("../xpholder/utils/playerName");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -222,24 +223,32 @@ async function hasEventsTable(guildId) {
   return res.rows[0].exists;
 }
 
+async function loadLevelThresholds(schema) {
+  const res = await pool.query(
+    `SELECT level, xp_to_next FROM ${schema}.levels ORDER BY level;`
+  );
+  const thresholds = [0];
+  let cumulative = 0;
+  for (const row of res.rows) {
+    cumulative += row.xp_to_next;
+    thresholds.push(cumulative);
+  }
+  return thresholds;
+}
+
+function levelFromXp(xp, thresholds) {
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) return Math.min(i + 1, 20);
+  }
+  return 1;
+}
+
 async function getActivePcStats(guildId) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
 
   // Get the levels table to compute level from XP
-  const levelsRes = await pool.query(
-    `SELECT level, xp_to_next FROM ${schema}.levels ORDER BY level;`
-  );
-  const levels = levelsRes.rows;
-
-  // Build cumulative XP thresholds for each level
-  // Level 1 requires 0 cumulative XP, level 2 requires levels[0].xp_to_next, etc.
-  const thresholds = [0]; // level 1 starts at 0
-  let cumulative = 0;
-  for (const row of levels) {
-    cumulative += row.xp_to_next;
-    thresholds.push(cumulative);
-  }
+  const thresholds = await loadLevelThresholds(schema);
 
   // Get characters with their XP, excluding PCs owned by players inactive 90+ days
   const hasPlayers = await hasPlayersTable(guildId);
@@ -249,14 +258,6 @@ async function getActivePcStats(guildId) {
        WHERE p.is_member = TRUE AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
     : `SELECT character_id, xp FROM ${schema}.characters;`;
   const charsRes = await pool.query(charsQuery);
-
-  // Compute level for each character
-  function getLevel(xp) {
-    for (let i = thresholds.length - 1; i >= 0; i--) {
-      if (xp >= thresholds[i]) return Math.min(i + 1, 20);
-    }
-    return 1;
-  }
 
   // Load brackets from character_tiers if configured, otherwise derive from event tiers
   const tiersRes = await pool.query(
@@ -285,7 +286,7 @@ async function getActivePcStats(guildId) {
   for (const b of brackets) charsByBracket[b.label] = new Set();
 
   for (const c of charsRes.rows) {
-    const level = getLevel(c.xp);
+    const level = levelFromXp(c.xp, thresholds);
     for (const b of brackets) {
       if (level >= b.min && level <= b.max) {
         charsByBracket[b.label].add(c.character_id);
@@ -508,4 +509,171 @@ async function getPlayerStats(guildId) {
   return res.rows[0];
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats };
+async function searchPlayersAndCharacters(guildId, q, { limit = 50 } = {}) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+  const pattern = `%${q}%`;
+  const qLower = q.toLowerCase();
+
+  // Players: SQL is a broad ILIKE on raw display_name to gather candidates,
+  // then the JS post-filter applies the canonical xpholder/utils/playerName
+  // formatter and keeps only rows whose RENDERED name actually contains the
+  // query. This is the single source of truth for "what the dashboard shows
+  // as a player's name" — previously we tried to mirror the formatter in
+  // SQL but kept missing edge cases (e.g. "NechamaM Ayala Wiz 9 UTC-8"
+  // strips to "NechamaM" via the formatter's "split-on-space-when-has-digit"
+  // rule, which is awkward to express in SQL). Bumping the SQL fetch to
+  // ~4× the result limit absorbs noise lost to the post-filter.
+  const sqlFetch = limit * 4;
+  const playersRes = await pool.query(
+    `SELECT
+      p.player_id,
+      p.display_name,
+      p.username,
+      p.is_member,
+      p.inactive_days,
+      COUNT(DISTINCT c.character_id) AS pc_count,
+      COUNT(DISTINCT ae.character_id) AS active_event_count
+    FROM ${schema}.players p
+    LEFT JOIN ${schema}.characters c ON c.player_id = p.player_id
+    LEFT JOIN (
+      SELECT ep.character_id
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE COALESCE(p.display_name, '') ILIKE $1
+       OR COALESCE(p.username, '') ILIKE $1
+    GROUP BY p.player_id
+    ORDER BY p.is_member DESC, LOWER(COALESCE(p.display_name, p.username)) ASC
+    LIMIT $2;`,
+    [pattern, sqlFetch]
+  );
+
+  const filteredPlayers = playersRes.rows
+    .filter((row) => {
+      const formatted = playerName(row.display_name, row.username);
+      return formatted && formatted.toLowerCase().includes(qLower);
+    })
+    .slice(0, limit);
+
+  const charactersRes = await pool.query(
+    `SELECT
+      c.character_id,
+      c.character_index,
+      c.name AS character_name,
+      c.player_id,
+      p.display_name AS owner_display_name,
+      p.username AS owner_username,
+      ae.event_id AS active_event_id,
+      ae.event_name AS active_event_name
+    FROM ${schema}.characters c
+    LEFT JOIN ${schema}.players p ON p.player_id = c.player_id
+    LEFT JOIN (
+      SELECT ep.character_id, e.event_id, e.name AS event_name
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE c.name ILIKE $1
+    ORDER BY LOWER(c.name) ASC
+    LIMIT $2;`,
+    [pattern, limit]
+  );
+
+  return {
+    players: filteredPlayers,
+    characters: charactersRes.rows,
+  };
+}
+
+async function getPlayerDetail(guildId, playerId) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+
+  const playerRes = await pool.query(
+    `SELECT player_id, display_name, username, is_member, inactive_days, first_seen, last_seen
+     FROM ${schema}.players WHERE player_id = $1;`,
+    [playerId]
+  );
+  if (playerRes.rows.length === 0) return null;
+
+  const thresholds = await loadLevelThresholds(schema);
+
+  const pcsRes = await pool.query(
+    `SELECT
+      c.character_id,
+      c.character_index,
+      c.name,
+      c.xp,
+      ae.event_id   AS active_event_id,
+      ae.event_name AS active_event_name,
+      ae.event_tier AS active_event_tier
+    FROM ${schema}.characters c
+    LEFT JOIN (
+      SELECT ep.character_id, e.event_id, e.name AS event_name, e.tier AS event_tier
+      FROM ${schema}.event_participants ep
+      JOIN ${schema}.events e ON ep.event_id = e.event_id
+      WHERE e.status = 'active'
+    ) ae ON ae.character_id = c.character_id
+    WHERE c.player_id = $1
+    ORDER BY c.character_index ASC;`,
+    [playerId]
+  );
+
+  const pcs = pcsRes.rows.map((row) => ({
+    ...row,
+    level: levelFromXp(row.xp, thresholds),
+  }));
+
+  return {
+    player: playerRes.rows[0],
+    pcs,
+  };
+}
+
+async function getPlayerHistoryByName(guildId, playerId) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+
+  // Group by event_participants.character_name (the snapshot taken at join time)
+  // rather than character_id. character_id is a player-slot identifier
+  // (playerId-N), and the same slot can be reused for different PCs over time
+  // (retire+recreate, slot reassignment). The snapshot name is the only
+  // period-correct way to attribute an event to a specific PC. PCs that have
+  // since been renamed will not match — accepted trade-off per spec.
+  const res = await pool.query(
+    `SELECT
+      ep.character_id,
+      ep.character_name,
+      e.event_id,
+      e.name,
+      e.tier,
+      e.event_type,
+      e.start_date,
+      e.end_date,
+      dms.dm_names
+     FROM ${schema}.event_participants ep
+     JOIN ${schema}.events e ON ep.event_id = e.event_id
+     LEFT JOIN (
+       SELECT event_id, string_agg(username, ', ') AS dm_names
+       FROM ${schema}.event_dms
+       GROUP BY event_id
+     ) dms ON dms.event_id = e.event_id
+     WHERE ep.player_id = $1 AND e.status = 'completed'
+     ORDER BY ep.character_name, e.start_date DESC;`,
+    [playerId]
+  );
+
+  const byName = new Map();
+  for (const row of res.rows) {
+    if (row.character_name == null) continue;
+    if (!byName.has(row.character_name)) {
+      byName.set(row.character_name, []);
+    }
+    byName.get(row.character_name).push(row);
+  }
+  return byName;
+}
+
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
-const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, getPlayerStats } = require("../db");
+const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName } = require("../db");
 const { playerName } = require("../../xpholder/utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
@@ -141,6 +141,70 @@ router.get("/active-pcs", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Active PCs error:", error);
     res.render("error", { message: "Failed to load active PC stats." });
+  }
+});
+
+router.get("/players", requireAuth, async (req, res) => {
+  try {
+    const hasTable = await hasPlayersTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Player tracking not enabled. Run /apply_registration_update in Discord." });
+    }
+
+    const q = (req.query.q || "").trim();
+    const searchResults = q.length >= 2
+      ? await searchPlayersAndCharacters(req.session.guildId, q)
+      : null;
+
+    res.render("players", { q, searchResults });
+  } catch (error) {
+    console.error("Players page error:", error);
+    res.render("error", { message: "Failed to load players." });
+  }
+});
+
+router.get("/player/:id", requireAuth, async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    if (!/^\d+$/.test(playerId)) {
+      return res.render("error", { message: "Invalid player ID." });
+    }
+
+    const hasTable = await hasPlayersTable(req.session.guildId);
+    if (!hasTable) {
+      return res.render("no-events", { message: "Player tracking not enabled. Run /apply_registration_update in Discord." });
+    }
+
+    const detail = await getPlayerDetail(req.session.guildId, playerId);
+    if (!detail) {
+      return res.render("error", { message: "Player not found." });
+    }
+
+    const historyByName = await getPlayerHistoryByName(req.session.guildId, playerId);
+
+    const currentNames = new Set(detail.pcs.map((pc) => pc.name));
+    const pcs = detail.pcs.map((pc) => ({
+      ...pc,
+      history: historyByName.get(pc.name) || [],
+    }));
+    const pastCharacters = [];
+    for (const [name, events] of historyByName) {
+      if (!currentNames.has(name)) {
+        pastCharacters.push({ name, events });
+      }
+    }
+    // Each character's events are already start_date DESC from the SQL,
+    // so events[0] is the most recent. Sort characters by that date, newest first.
+    pastCharacters.sort((a, b) => b.events[0].start_date - a.events[0].start_date);
+
+    res.render("player-detail", {
+      player: detail.player,
+      pcs,
+      pastCharacters,
+    });
+  } catch (error) {
+    console.error("Player detail error:", error);
+    res.render("error", { message: "Failed to load player." });
   }
 });
 

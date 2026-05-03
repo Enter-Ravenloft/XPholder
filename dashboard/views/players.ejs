@@ -1,0 +1,56 @@
+<%- include('partials/head', { title: 'Players' }) %>
+<%- include('partials/nav') %>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <h1 class="text-2xl font-bold mb-4">Player &amp; PC Search</h1>
+
+  <form method="get" action="/players" class="mb-6">
+    <input type="text" name="q" id="player-search-input" value="<%= q %>" placeholder="Search by player or PC name" autofocus
+      class="w-full max-w-lg bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-100 focus:outline-none focus:border-indigo-500"
+      autocomplete="off" />
+  </form>
+
+  <div id="search-results">
+    <%- include('partials/players-search-results', { q, searchResults }) %>
+  </div>
+</main>
+
+<script>
+  // Click delegation for [data-href] rows. Document-level so it survives DOM
+  // replacements from the typeahead fetch below.
+  document.addEventListener('click', function (e) {
+    const row = e.target.closest('tr[data-href]');
+    if (!row) return;
+    if (e.target.closest('a, button')) return;
+    window.location = row.dataset.href;
+  });
+
+  // Live search: debounce the input, fetch the results fragment from the API,
+  // and swap it into #search-results. Falls back to form submission if JS
+  // is disabled or the fetch fails.
+  (function () {
+    const input = document.getElementById('player-search-input');
+    const container = document.getElementById('search-results');
+    if (!input || !container) return;
+    let timer = null;
+    let inflight = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(async function () {
+        if (inflight) inflight.abort();
+        inflight = new AbortController();
+        try {
+          const res = await fetch(
+            '/api/players/search?q=' + encodeURIComponent(input.value),
+            { signal: inflight.signal, headers: { 'Accept': 'text/html' } }
+          );
+          if (res.ok) container.innerHTML = await res.text();
+        } catch (err) {
+          if (err.name !== 'AbortError') console.error(err);
+        }
+      }, 200);
+    });
+  })();
+</script>
+
+<%- include('partials/foot') %>
