@@ -526,6 +526,44 @@ describe("events", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("renameCharacterParticipations", () => {
+    it("rewrites snapshots that match (character_id, oldName)", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Quest A" });
+      await gService.addEventParticipant(eventId, "char-1", "p1", "Foo", 3, 0);
+
+      await gService.renameCharacterParticipations("char-1", "Foo", "Bar");
+
+      const participants = await gService.getEventParticipants(eventId);
+      expect(participants).toHaveLength(1);
+      expect(participants[0].character_name).toBe("Bar");
+    });
+
+    it("doesn't touch rows whose character_name doesn't match oldName", async () => {
+      const { gService } = ctx;
+      const eventA = await makeEvent({ name: "Quest A" });
+      const eventB = await makeEvent({ name: "Quest B" });
+      // Same character_id, different snapshot names — e.g. a retired-then-recreated PC
+      await gService.addEventParticipant(eventA, "char-1", "p1", "Foo", 3, 0);
+      await gService.addEventParticipant(eventB, "char-1", "p1", "Baz", 3, 0);
+
+      await gService.renameCharacterParticipations("char-1", "Foo", "Bar");
+
+      const aParticipants = await gService.getEventParticipants(eventA);
+      const bParticipants = await gService.getEventParticipants(eventB);
+      expect(aParticipants[0].character_name).toBe("Bar");
+      expect(bParticipants[0].character_name).toBe("Baz");
+    });
+
+    it("is a no-op for a character_id with zero participations", async () => {
+      const { gService } = ctx;
+      // No participants inserted; method should not throw.
+      await expect(
+        gService.renameCharacterParticipations("char-nobody", "Foo", "Bar")
+      ).resolves.toBeUndefined();
+    });
+  });
 });
 
 describe("event_participants", () => {

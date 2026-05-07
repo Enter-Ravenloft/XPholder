@@ -594,6 +594,15 @@ class guildService {
     return res.rows[0] || null;
   }
 
+  async renameCharacterParticipations(characterId, oldName, newName) {
+    await this.db.query(
+      `UPDATE ${this.schema}.event_participants
+       SET character_name = $1
+       WHERE character_id = $2 AND character_name = $3;`,
+      [newName, characterId, oldName]
+    );
+  }
+
   async getEvents(status = null) {
     if (status) {
       const res = await this.db.query(
