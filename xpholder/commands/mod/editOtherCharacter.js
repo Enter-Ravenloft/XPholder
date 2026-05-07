@@ -144,13 +144,30 @@ module.exports = {
       player_id: player.id,
       xp: character["xp"],
     };
+    const oldName = character["name"];
     await guildService.updateCharacterInfo(updatedCharacter);
+
+    // Keep event_participants snapshots in sync with the live name, so
+    // dashboard history grouping (which keys by character_name) follows
+    // the rename. No-op when the name didn't actually change.
+    if (characterName !== oldName) {
+      await guildService.renameCharacterParticipations(
+        updatedCharacter.character_id,
+        oldName,
+        characterName
+      );
+    }
+
+    // Show active event on the post-edit embed too (matches /xp).
+    const activeEvent = await guildService.getActiveEventForCharacter(
+      updatedCharacter.character_id
+    );
 
     const characterEmbed = buildCharacterEmbed(
       guildService,
       player,
       updatedCharacter,
-      characterNumber
+      activeEvent
     );
 
     await interaction.editReply({ embeds: [characterEmbed] });
