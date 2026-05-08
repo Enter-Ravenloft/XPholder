@@ -203,7 +203,31 @@ module.exports = {
       ) ||
         interaction.member.id == interaction.member.guild.ownerId)
     ) {
-      // The Approve / Reject buttons for request_xp submissions
+      // The Approve / Reject buttons for request_xp submissions.
+      //
+      // Defer immediately so the rest of the handler isn't bound by Discord's
+      // ~3s initial-response window. The role-API calls inside
+      // updateCharacterXP can spike past that under rate limits, and a
+      // post-grant interaction.update() failure would leave buttons live —
+      // which is the conditions for double-grant we hit in 2026-04.
+      await interaction.deferUpdate();
+
+      // Idempotency guard: if the buttons are already gone, an earlier
+      // click successfully processed this request. Bail without re-running
+      // the grant/log path. (Friendly ephemeral feedback so the mod knows
+      // their click was acknowledged but no-oped.)
+      if (interaction.message.components.length === 0) {
+        try {
+          await interaction.followUp({
+            content: "This request has already been processed.",
+            ephemeral: true,
+          });
+        } catch (err) {
+          console.error("request_xp: failed to send already-processed followUp", err);
+        }
+        return;
+      }
+
       try {
         const originalEmbed = interaction.message.embeds[0];
 
@@ -245,8 +269,9 @@ module.exports = {
             break;
         }
 
-        // Update the original message with the new embed and remove the buttons
-        await interaction.update({ embeds: [updatedEmbed], components: [] });
+        // Update the original message with the new embed and remove the
+        // buttons. After deferUpdate() the response goes via editReply().
+        await interaction.editReply({ embeds: [updatedEmbed], components: [] });
 
         // DM the player that made the request about the approval / rejection
         try {
@@ -257,7 +282,11 @@ module.exports = {
         }
         return;
       } catch (error) {
-        console.log(error);
+        console.error(
+          "request_xp button handler error",
+          { interactionId: interaction.id, messageId: interaction.message?.id },
+          error
+        );
       }
     }
   },
