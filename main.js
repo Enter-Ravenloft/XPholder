@@ -181,6 +181,7 @@ client.on("interactionCreate", async (interaction) => {
     !interaction.isButton() &&
     !interaction.isStringSelectMenu() &&
     !interaction.isUserSelectMenu() &&
+    !interaction.isChannelSelectMenu() &&
     !interaction.isModalSubmit()
   ) {
     return;

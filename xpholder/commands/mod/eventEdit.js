@@ -144,9 +144,9 @@ async function handleEditChannelSelect(guildService, interaction) {
     await logEventEditChange(
       interaction,
       after,
-      "role_play_channel",
-      before.role_play_channel_name,
-      channel.name
+      "role_play_channel_id",
+      before.role_play_channel_id,
+      channel.id
     );
   } catch (err) {
     console.error("logEventEditChange failed:", err);
