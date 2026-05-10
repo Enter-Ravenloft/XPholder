@@ -12,6 +12,7 @@ describe("parseEventEditCustomId", () => {
     ["event_edit_type:42", { kind: "type", eventId: 42 }],
     ["event_edit_tier:1", { kind: "tier", eventId: 1 }],
     ["event_edit_dm:999", { kind: "dm", eventId: 999 }],
+    ["event_edit_rp_channel:42", { kind: "rp_channel", eventId: 42 }],
     ["event_edit_text:42", { kind: "text", eventId: 42 }],
     ["event_edit_modal:42", { kind: "modal", eventId: 42 }],
   ])("parses %s", (customId, expected) => {
@@ -204,10 +205,10 @@ describe("buildEventEditMessage", () => {
     status: "active",
   };
 
-  it("returns one embed and four action rows", () => {
+  it("returns one embed and five action rows", () => {
     const result = buildEventEditMessage(fixture, []);
     expect(result.embeds).toHaveLength(1);
-    expect(result.components).toHaveLength(4);
+    expect(result.components).toHaveLength(5);
   });
 
   it("encodes eventId in each component customId", () => {
@@ -217,6 +218,7 @@ describe("buildEventEditMessage", () => {
       "event_edit_type:42",
       "event_edit_tier:42",
       "event_edit_dm:42",
+      "event_edit_rp_channel:42",
       "event_edit_text:42",
     ]);
   });
@@ -241,6 +243,26 @@ describe("buildEventEditMessage", () => {
     expect(fields.find((f) => f.name === "End").value).toBe("2026-02-01");
     expect(fields.find((f) => f.name === "XP Reward").value).toBe("5000");
     expect(fields.find((f) => f.name === "GP Reward").value).toBe("250");
+  });
+
+  it("omits Channel field when no role_play_channel set", () => {
+    const result = buildEventEditMessage(fixture, []);
+    const fields = result.embeds[0].data.fields;
+    expect(fields.find((f) => f.name === "Channel")).toBeUndefined();
+  });
+
+  it("renders Channel as a mention when role_play_channel_id is set", () => {
+    const event = { ...fixture, role_play_channel_id: "1234567890", role_play_channel_name: "rp-room" };
+    const result = buildEventEditMessage(event, []);
+    const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
+    expect(channelField.value).toBe("<#1234567890>");
+  });
+
+  it("falls back to role_play_channel_name when id is missing", () => {
+    const event = { ...fixture, role_play_channel_id: null, role_play_channel_name: "rp-room" };
+    const result = buildEventEditMessage(event, []);
+    const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
+    expect(channelField.value).toBe("rp-room");
   });
 
   it("renders DMs joined with comma; '—' when empty", () => {

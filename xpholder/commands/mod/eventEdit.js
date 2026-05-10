@@ -112,6 +112,47 @@ async function handleEditDmSelect(guildService, interaction) {
   }
 }
 
+async function handleEditChannelSelect(guildService, interaction) {
+  const parsed = parseEventEditCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+  const channel = interaction.channels.first();
+
+  const before = await guildService.getEvent(eventId);
+  if (!before) {
+    await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    return;
+  }
+  if (!channel) {
+    await interaction.deferUpdate();
+    return;
+  }
+  if (before.role_play_channel_id === channel.id) {
+    await interaction.deferUpdate();
+    return;
+  }
+
+  await guildService.updateEvent(eventId, {
+    role_play_channel_id: channel.id,
+    role_play_channel_name: channel.name,
+  });
+  const after = await guildService.getEvent(eventId);
+  const dms = await guildService.getEventDms(eventId);
+  await interaction.update(buildEventEditMessage(after, dms));
+
+  try {
+    await logEventEditChange(
+      interaction,
+      after,
+      "role_play_channel",
+      before.role_play_channel_name,
+      channel.name
+    );
+  } catch (err) {
+    console.error("logEventEditChange failed:", err);
+  }
+}
+
 async function handleEditTextButton(guildService, interaction) {
   const parsed = parseEventEditCustomId(interaction.customId);
   if (!parsed) return;
@@ -241,6 +282,7 @@ module.exports = {
   handleEditTypeSelect,
   handleEditTierSelect,
   handleEditDmSelect,
+  handleEditChannelSelect,
   handleEditTextButton,
   handleEditModalSubmit,
 };

@@ -52,6 +52,7 @@ const {
   handleEditTypeSelect,
   handleEditTierSelect,
   handleEditDmSelect,
+  handleEditChannelSelect,
   handleEditTextButton,
   handleEditModalSubmit,
 } = require("./xpholder/commands/mod/eventEdit");
@@ -289,6 +290,12 @@ client.on("interactionCreate", async (interaction) => {
       handleEditTypeSelect(gService, interaction);
     } else if (interaction.customId.startsWith("event_edit_tier:")) {
       handleEditTierSelect(gService, interaction);
+    }
+  }
+
+  if (interaction.isChannelSelectMenu()) {
+    if (interaction.customId.startsWith("event_edit_rp_channel:")) {
+      handleEditChannelSelect(gService, interaction);
     }
   }
 
