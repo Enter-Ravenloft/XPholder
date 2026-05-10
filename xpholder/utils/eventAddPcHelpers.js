@@ -28,15 +28,27 @@ function buildAddPcMessage(event, participants, selectedPlayerId, availableChara
     ? participants.map((p) => `• ${p.character_name} (Lvl ${p.starting_level})`).join("\n")
     : "None";
 
+  let channelValue = null;
+  if (event.role_play_channel_id) {
+    channelValue = `<#${event.role_play_channel_id}>`;
+  } else if (event.role_play_channel_name) {
+    channelValue = event.role_play_channel_name;
+  }
+
+  const fields = [
+    { inline: true, name: "Type", value: event.event_type },
+    { inline: true, name: "Tier", value: event.tier },
+    { inline: true, name: "Status", value: event.status },
+  ];
+  if (channelValue !== null) {
+    fields.push({ inline: true, name: "Channel", value: channelValue });
+  }
+  fields.push({ inline: false, name: "Participants", value: participantList });
+
   const embed = new EmbedBuilder()
     .setTitle(`Add PCs to ${event.name}`)
     .setColor(XPHOLDER_COLOUR)
-    .setFields(
-      { inline: true, name: "Type", value: event.event_type },
-      { inline: true, name: "Tier", value: event.tier },
-      { inline: true, name: "Status", value: event.status },
-      { inline: false, name: "Participants", value: participantList }
-    );
+    .setFields(...fields);
 
   const userRow = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
