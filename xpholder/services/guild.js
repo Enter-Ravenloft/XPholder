@@ -433,6 +433,9 @@ class guildService {
       await this.db.query(
         `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS original_tier TEXT;`
       );
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS removal_reason TEXT;`
+      );
     }
     console.log("Finished updateRegistration");
   }
@@ -537,6 +540,7 @@ class guildService {
         character_id TEXT NOT NULL,
         player_id TEXT,
         character_name TEXT,
+        removal_reason TEXT,
         starting_level INTEGER NOT NULL,
         starting_xp REAL NOT NULL,
         joined_at TIMESTAMP DEFAULT NOW(),
@@ -706,6 +710,57 @@ class guildService {
       [eventId]
     );
     return res.rows;
+  }
+
+  async getActiveEventParticipants(eventId) {
+    const res = await this.db.query(
+      `SELECT ep.*,
+         COALESCE(ep.character_name, c.name) as character_name,
+         COALESCE(ep.player_id, c.player_id) as player_id
+       FROM ${this.schema}.event_participants ep
+       LEFT JOIN ${this.schema}.characters c ON ep.character_id = c.character_id
+       WHERE ep.event_id = $1
+         AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
+       ORDER BY ep.joined_at;`,
+      [eventId]
+    );
+    return res.rows;
+  }
+
+  async getDroppedEventParticipants(eventId) {
+    const res = await this.db.query(
+      `SELECT ep.*,
+         COALESCE(ep.character_name, c.name) as character_name,
+         COALESCE(ep.player_id, c.player_id) as player_id
+       FROM ${this.schema}.event_participants ep
+       LEFT JOIN ${this.schema}.characters c ON ep.character_id = c.character_id
+       WHERE ep.event_id = $1 AND ep.removal_reason = 'dropped'
+       ORDER BY ep.joined_at;`,
+      [eventId]
+    );
+    return res.rows;
+  }
+
+  async dropEventParticipant(eventId, characterId) {
+    const res = await this.db.query(
+      `UPDATE ${this.schema}.event_participants
+       SET removal_reason = 'dropped'
+       WHERE event_id = $1 AND character_id = $2
+       RETURNING *;`,
+      [eventId, characterId]
+    );
+    return res.rows[0] || null;
+  }
+
+  async markEventParticipantDeath(eventId, characterId) {
+    const res = await this.db.query(
+      `UPDATE ${this.schema}.event_participants
+       SET removal_reason = 'death'
+       WHERE event_id = $1 AND character_id = $2
+       RETURNING *;`,
+      [eventId, characterId]
+    );
+    return res.rows[0] || null;
   }
 
   async addEventDm(eventId, userId, username, isPrimary = false) {

@@ -564,6 +564,88 @@ describe("events", () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  describe("removal_reason", () => {
+    it("dropEventParticipant sets removal_reason='dropped'", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Drop Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "PC One", 3, 0);
+      await gService.dropEventParticipant(eventId, "p1-1");
+      const all = await gService.getEventParticipants(eventId);
+      expect(all).toHaveLength(1);
+      expect(all[0].removal_reason).toBe("dropped");
+    });
+
+    it("markEventParticipantDeath sets removal_reason='death'", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Death Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "PC One", 3, 0);
+      await gService.markEventParticipantDeath(eventId, "p1-1");
+      const all = await gService.getEventParticipants(eventId);
+      expect(all[0].removal_reason).toBe("death");
+    });
+
+    it("removeEventParticipant still DELETEs the row (regression)", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Remove Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "PC One", 3, 0);
+      await gService.removeEventParticipant(eventId, "p1-1");
+      const all = await gService.getEventParticipants(eventId);
+      expect(all).toHaveLength(0);
+    });
+
+    it("getActiveEventParticipants includes active and death, excludes dropped", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Active Filter Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "Active PC", 3, 0);
+      await gService.addEventParticipant(eventId, "p1-2", "p1", "Dropped PC", 3, 0);
+      await gService.addEventParticipant(eventId, "p1-3", "p1", "Dead PC", 3, 0);
+      await gService.dropEventParticipant(eventId, "p1-2");
+      await gService.markEventParticipantDeath(eventId, "p1-3");
+
+      const active = await gService.getActiveEventParticipants(eventId);
+      const names = active.map((p) => p.character_name).sort();
+      expect(names).toEqual(["Active PC", "Dead PC"]);
+    });
+
+    it("getDroppedEventParticipants returns only dropped rows", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Dropped Filter Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "Active PC", 3, 0);
+      await gService.addEventParticipant(eventId, "p1-2", "p1", "Dropped PC", 3, 0);
+      await gService.dropEventParticipant(eventId, "p1-2");
+
+      const dropped = await gService.getDroppedEventParticipants(eventId);
+      expect(dropped).toHaveLength(1);
+      expect(dropped[0].character_name).toBe("Dropped PC");
+    });
+
+    it("retarget: drop then death moves back into active (last-write-wins)", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Retarget Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "PC One", 3, 0);
+      await gService.dropEventParticipant(eventId, "p1-1");
+
+      let active = await gService.getActiveEventParticipants(eventId);
+      expect(active).toHaveLength(0);
+
+      await gService.markEventParticipantDeath(eventId, "p1-1");
+      active = await gService.getActiveEventParticipants(eventId);
+      expect(active).toHaveLength(1);
+      expect(active[0].removal_reason).toBe("death");
+    });
+
+    it("removeEventParticipant DELETEs a dropped row entirely", async () => {
+      const { gService } = ctx;
+      const eventId = await makeEvent({ name: "Remove After Drop Test" });
+      await gService.addEventParticipant(eventId, "p1-1", "p1", "PC One", 3, 0);
+      await gService.dropEventParticipant(eventId, "p1-1");
+      await gService.removeEventParticipant(eventId, "p1-1");
+
+      const all = await gService.getEventParticipants(eventId);
+      expect(all).toHaveLength(0);
+    });
+  });
 });
 
 describe("event_participants", () => {
