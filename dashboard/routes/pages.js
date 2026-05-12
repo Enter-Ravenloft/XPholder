@@ -6,9 +6,13 @@ const { playerName } = require("../../xpholder/utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const hasTable = await hasEventsTable(req.session.guildId);
-    if (!hasTable) {
+    const hasEvents = await hasEventsTable(req.session.guildId);
+    if (!hasEvents) {
       return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
+    }
+    const hasPlayers = await hasPlayersTable(req.session.guildId);
+    if (!hasPlayers) {
+      return res.render("no-events", { message: "Player tracking not enabled. Run /apply_registration_update in Discord." });
     }
 
     const { range, from, to } = req.query;
@@ -29,9 +33,16 @@ router.get("/", requireAuth, async (req, res) => {
     }
     // "all" or no range = no date filter
 
-    const stats = await getEventStats(req.session.guildId, dateRange);
+    const [stats, activePcStats, playerStats] = await Promise.all([
+      getEventStats(req.session.guildId, dateRange),
+      getActivePcStats(req.session.guildId),
+      getPlayerStats(req.session.guildId),
+    ]);
+
     res.render("index", {
       stats,
+      activePcStats,
+      playerStats,
       activeRange: range || "all",
       customFrom: from || "",
       customTo: to || "",
