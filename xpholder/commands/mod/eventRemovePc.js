@@ -21,6 +21,17 @@ module.exports = {
         .setAutocomplete(true)
         .setRequired(true)
     )
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription("Why is this PC being removed?")
+        .setRequired(true)
+        .addChoices(
+          { name: "Remove (correct a mistake — full removal)", value: "remove" },
+          { name: "Drop (PC leaves the event)", value: "drop" },
+          { name: "Death (PC dies in the event)", value: "death" }
+        )
+    )
     .addBooleanOption((option) =>
       option
         .setName("public")
@@ -53,9 +64,27 @@ module.exports = {
       return;
     }
 
-    const removed = await guildService.removeEventParticipant(eventId, characterId);
+    const reason = interaction.options.getString("reason");
 
-    if (!removed) {
+    let result;
+    let reasonLabel;
+    switch (reason) {
+      case "drop":
+        result = await guildService.dropEventParticipant(eventId, characterId);
+        reasonLabel = "Dropped";
+        break;
+      case "death":
+        result = await guildService.markEventParticipantDeath(eventId, characterId);
+        reasonLabel = "Death";
+        break;
+      case "remove":
+      default:
+        result = await guildService.removeEventParticipant(eventId, characterId);
+        reasonLabel = "Removed";
+        break;
+    }
+
+    if (!result) {
       await interaction.editReply("That character is not in this event.");
       return;
     }
@@ -65,8 +94,9 @@ module.exports = {
       .setColor(XPHOLDER_RETIRE_COLOUR)
       .setFields(
         { inline: true, name: "Event", value: event.name },
-        { inline: true, name: "Character", value: removed.character_name || characterId },
-        { inline: true, name: "Player", value: removed.player_id ? `<@${removed.player_id}>` : "Unknown" }
+        { inline: true, name: "Character", value: result.character_name || characterId },
+        { inline: true, name: "Player", value: result.player_id ? `<@${result.player_id}>` : "Unknown" },
+        { inline: true, name: "Reason", value: reasonLabel }
       )
       .setTimestamp();
 
