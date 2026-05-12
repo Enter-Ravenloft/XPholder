@@ -140,19 +140,8 @@ router.get("/dms", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/active-pcs", requireAuth, async (req, res) => {
-  try {
-    const hasTable = await hasEventsTable(req.session.guildId);
-    if (!hasTable) {
-      return res.render("no-events", { message: "Event tables not found. Run /apply_registration_update in Discord." });
-    }
-    const stats = await getActivePcStats(req.session.guildId);
-    const playerStats = await getPlayerStats(req.session.guildId);
-    res.render("active-pcs", { stats, playerStats });
-  } catch (error) {
-    console.error("Active PCs error:", error);
-    res.render("error", { message: "Failed to load active PC stats." });
-  }
+router.get("/active-pcs", requireAuth, (req, res) => {
+  res.redirect(301, "/");
 });
 
 router.get("/players", requireAuth, async (req, res) => {
