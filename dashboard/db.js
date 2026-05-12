@@ -142,7 +142,9 @@ async function getEvents(guildId, status = null, { limit = null, offset = 0, sor
   // Get paginated results
   let query = `
     SELECT e.*,
-      (SELECT COUNT(*) FROM ${schema}.event_participants WHERE event_id = e.event_id) as participant_count,
+      (SELECT COUNT(*) FROM ${schema}.event_participants
+        WHERE event_id = e.event_id
+          AND (removal_reason IS NULL OR removal_reason = 'death')) as participant_count,
       (SELECT string_agg(username, ', ') FROM ${schema}.event_dms WHERE event_id = e.event_id) as dm_names
     FROM ${schema}.events e
     ${whereClause}
@@ -184,6 +186,7 @@ async function getEvent(guildId, eventId) {
      LEFT JOIN ${schema}.characters c ON ep.character_id = c.character_id
      LEFT JOIN ${schema}.players p ON COALESCE(ep.player_id, c.player_id) = p.player_id
      WHERE ep.event_id = $1
+       AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
      ORDER BY ep.joined_at;`,
     [eventId]
   );
@@ -198,6 +201,28 @@ async function getEvent(guildId, eventId) {
     participants: participantRes.rows,
     dms: dmRes.rows,
   };
+}
+
+async function getDroppedParticipants(guildId, eventId) {
+  validateGuildId(guildId);
+  const schema = `guild${guildId}`;
+  const res = await pool.query(
+    `SELECT ep.*,
+       COALESCE(ep.character_name, c.name) as character_name,
+       COALESCE(ep.player_id, c.player_id) as player_id,
+       c.xp as current_xp,
+       p.username,
+       p.display_name,
+       p.is_member,
+       p.inactive_days
+     FROM ${schema}.event_participants ep
+     LEFT JOIN ${schema}.characters c ON ep.character_id = c.character_id
+     LEFT JOIN ${schema}.players p ON COALESCE(ep.player_id, c.player_id) = p.player_id
+     WHERE ep.event_id = $1 AND ep.removal_reason = 'dropped'
+     ORDER BY ep.joined_at;`,
+    [eventId]
+  );
+  return res.rows;
 }
 
 async function getGuildConfig(guildId, key) {
@@ -676,4 +701,4 @@ async function getPlayerHistoryByName(guildId, playerId) {
   return byName;
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, getDroppedParticipants, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
