@@ -27,9 +27,9 @@ module.exports = {
         .setDescription("Why is this PC being removed?")
         .setRequired(true)
         .addChoices(
-          { name: "Remove (correct a mistake — full removal)", value: "remove" },
-          { name: "Drop (PC leaves the event)", value: "drop" },
-          { name: "Death (PC dies in the event)", value: "death" }
+          { name: "Remove (full removal)", value: "remove" },
+          { name: "Drop (PC left event)", value: "drop" },
+          { name: "Death (PC died in event)", value: "death" }
         )
     )
     .addBooleanOption((option) =>
