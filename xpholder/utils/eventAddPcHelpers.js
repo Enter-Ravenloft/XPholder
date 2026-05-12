@@ -7,6 +7,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../config.json");
+const { formatParticipantName } = require("./participantRender");
 
 function parseAddPcCustomId(customId) {
   if (typeof customId !== "string") return null;
@@ -23,24 +24,49 @@ function parseAddPcCustomId(customId) {
   return { kind, eventId, playerId };
 }
 
-function buildAddPcMessage(event, participants, selectedPlayerId, availableCharacters) {
-  const participantList = participants.length > 0
-    ? participants.map((p) => `• ${p.character_name} (Lvl ${p.starting_level})`).join("\n")
-    : "None";
+function buildAddPcMessage(
+  event,
+  activeParticipants,
+  droppedParticipants,
+  selectedPlayerId,
+  availableCharacters
+) {
+  const dropped = droppedParticipants || [];
+  const activeLines = activeParticipants.map(
+    (p) => `• ${formatParticipantName(p)} (Lvl ${p.starting_level})`
+  );
+  const participantList = activeLines.length > 0 ? activeLines.join("\n") : "None";
+
+  const fields = [
+    { inline: true, name: "Type", value: event.event_type },
+    { inline: true, name: "Tier", value: event.tier },
+    { inline: true, name: "Status", value: event.status },
+    {
+      inline: false,
+      name: `Participants (${activeParticipants.length})`,
+      value: participantList,
+    },
+  ];
+
+  if (dropped.length > 0) {
+    const droppedLines = dropped.map(
+      (p) => `• ${p.character_name} (Lvl ${p.starting_level})`
+    );
+    fields.push({
+      inline: false,
+      name: `Dropped (${dropped.length})`,
+      value: droppedLines.join("\n"),
+    });
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(`Add PCs to ${event.name}`)
     .setColor(XPHOLDER_COLOUR)
-    .setFields(
-      { inline: true, name: "Type", value: event.event_type },
-      { inline: true, name: "Tier", value: event.tier },
-      { inline: true, name: "Status", value: event.status },
-      { inline: false, name: "Participants", value: participantList }
-    );
+    .setFields(...fields);
 
   const userRow = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
-      .setCustomId(`event_add_pc_user:${event.event_id}:n${participants.length}`)
+      .setCustomId(`event_add_pc_user:${event.event_id}:n${activeParticipants.length}`)
       .setPlaceholder("Choose a Player")
   );
 

@@ -4,6 +4,7 @@ const { XPHOLDER_APPROVE_COLOUR } = require("../../config.json");
 const { isValidYmd } = require("../../utils/validation");
 const { playerName } = require("../../utils/playerName");
 const { resolveEventOption } = require("../../utils/resolveEventOption");
+const { formatParticipantName } = require("../../utils/participantRender");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -81,32 +82,48 @@ module.exports = {
 
     await guildService.endEvent(eventId, endDate, xpReward, gpReward);
 
-    const participants = await guildService.getEventParticipants(eventId);
+    const active = await guildService.getActiveEventParticipants(eventId);
+    const dropped = await guildService.getDroppedEventParticipants(eventId);
     const dms = await guildService.getEventDms(eventId);
 
-    const participantList = participants.length > 0
-      ? participants.map((p) => {
-          const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
-          return `${p.character_name}${level}`;
-        }).join("\n")
-      : "None";
+    const activeLines = active.map((p) => {
+      const name = formatParticipantName(p);
+      const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
+      return `${name}${level}`;
+    });
+    const participantList = activeLines.length > 0 ? activeLines.join("\n") : "None";
+
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ");
+
+    const fields = [
+      { inline: true, name: "Event", value: event.name },
+      { inline: true, name: "Type", value: event.event_type },
+      { inline: true, name: "Tier", value: event.tier },
+      { inline: true, name: "Start", value: event.start_date.toISOString().split("T")[0] },
+      { inline: true, name: "End", value: endDate },
+      { inline: true, name: "DMs", value: dmList },
+      { inline: true, name: "XP Reward", value: xpReward != null ? `${xpReward}` : "—" },
+      { inline: true, name: "GP Reward", value: gpReward != null ? `${gpReward}` : "—" },
+      { inline: false, name: `Participants (${active.length})`, value: participantList },
+    ];
+
+    if (dropped.length > 0) {
+      const droppedLines = dropped.map((p) => {
+        const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
+        return `${p.character_name}${level}`;
+      });
+      fields.push({
+        inline: false,
+        name: `Dropped (${dropped.length})`,
+        value: droppedLines.join("\n"),
+      });
+    }
 
     const embed = new EmbedBuilder()
       .setTitle("Event Completed")
       .setColor(XPHOLDER_APPROVE_COLOUR)
-      .setFields(
-        { inline: true, name: "Event", value: event.name },
-        { inline: true, name: "Type", value: event.event_type },
-        { inline: true, name: "Tier", value: event.tier },
-        { inline: true, name: "Start", value: event.start_date.toISOString().split("T")[0] },
-        { inline: true, name: "End", value: endDate },
-        { inline: true, name: "DMs", value: dmList },
-        { inline: true, name: "XP Reward", value: xpReward != null ? `${xpReward}` : "—" },
-        { inline: true, name: "GP Reward", value: gpReward != null ? `${gpReward}` : "—" },
-        { inline: false, name: `Participants (${participants.length})`, value: participantList }
-      )
+      .setFields(...fields)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
