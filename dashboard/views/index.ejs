@@ -44,7 +44,7 @@
     </div>
     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
       <p class="text-sm text-gray-400">Active Events</p>
-      <p class="text-2xl font-bold text-green-400"><%= stats.active_events %></p>
+      <p id="cardActiveEvents" class="text-2xl font-bold text-green-400"><%= stats.active_events %></p>
     </div>
   </div>
 
@@ -105,19 +105,19 @@
   </div>
 
   <!-- Event Stats section -->
-  <div class="flex flex-wrap items-center justify-between mb-4 gap-4">
+  <div id="event-stats" class="flex flex-wrap items-center justify-between mb-4 gap-4">
     <h2 class="text-xl font-bold">Event Stats</h2>
     <div class="flex flex-wrap items-center gap-2">
-      <a href="/" class="px-3 py-1 rounded text-sm <%= activeRange === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">All Time</a>
-      <a href="/?range=30d" class="px-3 py-1 rounded text-sm <%= activeRange === '30d' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last 30 Days</a>
-      <a href="/?range=1y" class="px-3 py-1 rounded text-sm <%= activeRange === '1y' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last Year</a>
-      <button id="customToggle" class="px-3 py-1 rounded text-sm <%= activeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Custom</button>
+      <a href="/#event-stats" data-filter="all" class="px-3 py-1 rounded text-sm <%= activeRange === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">All Time</a>
+      <a href="/?range=30d#event-stats" data-filter="30d" class="px-3 py-1 rounded text-sm <%= activeRange === '30d' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last 30 Days</a>
+      <a href="/?range=1y#event-stats" data-filter="1y" class="px-3 py-1 rounded text-sm <%= activeRange === '1y' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Last Year</a>
+      <button data-filter="custom" class="px-3 py-1 rounded text-sm <%= activeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600' %>">Custom</button>
     </div>
   </div>
 
   <!-- Custom Date Range -->
   <div id="customRange" class="<%= activeRange === 'custom' ? '' : 'hidden' %> mb-6">
-    <form method="GET" action="/" class="flex flex-wrap items-end gap-3">
+    <form id="customRangeForm" method="GET" action="/#event-stats" class="flex flex-wrap items-end gap-3">
       <input type="hidden" name="range" value="custom">
       <div>
         <label class="block text-sm text-gray-400 mb-1">From</label>
@@ -135,19 +135,19 @@
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Total Events</p>
-      <p class="text-3xl font-bold"><%= stats.total_events %></p>
+      <p id="cardTotalEvents" class="text-3xl font-bold"><%= stats.total_events %></p>
     </div>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Completed</p>
-      <p class="text-3xl font-bold text-blue-400"><%= stats.completed_events %></p>
+      <p id="cardCompletedEvents" class="text-3xl font-bold text-blue-400"><%= stats.completed_events %></p>
     </div>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Unique PCs</p>
-      <p class="text-3xl font-bold"><%= stats.total_participants %></p>
+      <p id="cardUniquePcs" class="text-3xl font-bold"><%= stats.total_participants %></p>
     </div>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Avg Party Size</p>
-      <p class="text-3xl font-bold"><%= parseFloat(stats.avg_party_size).toFixed(1) %></p>
+      <p id="cardAvgPartySize" class="text-3xl font-bold"><%= parseFloat(stats.avg_party_size).toFixed(1) %></p>
     </div>
   </div>
 
@@ -164,8 +164,7 @@
   </div>
 
   <!-- Most Events Started -->
-  <% if (stats.top_dms.length > 0) { %>
-  <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+  <div id="topDmsSection" class="bg-gray-800 rounded-lg p-6 border border-gray-700 <%= stats.top_dms.length === 0 ? 'hidden' : '' %>">
     <h2 class="text-lg font-semibold mb-4">Most Events Started</h2>
     <table class="w-full text-left">
       <thead>
@@ -174,7 +173,7 @@
           <th class="pb-2">Total Events</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="topDmsBody">
         <% stats.top_dms.forEach(dm => { %>
         <tr class="border-b border-gray-700/50">
           <td class="py-2"><%= dm.username ? playerName(dm.username, null) : dm.user_id %></td>
@@ -184,79 +183,79 @@
       </tbody>
     </table>
   </div>
-  <% } %>
 </main>
 
 <script>
-  document.getElementById('customToggle').addEventListener('click', () => {
-    document.getElementById('customRange').classList.toggle('hidden');
-  });
-
   Chart.defaults.color = '#9ca3af';
 
-  // Tier and type charts (event stats)
-  const tierData = <%- JSON.stringify(stats.events_by_tier).replace(/</g, '\\u003c') %>;
-  const typeData = <%- JSON.stringify(stats.events_by_type).replace(/</g, '\\u003c') %>;
+  // ---- Event charts (date-filterable, re-rendered on filter change) ----
+  let tierChart = null;
+  let typeChart = null;
 
-  if (tierData.length > 0) {
-    new Chart(document.getElementById('tierChart'), {
-      type: 'bar',
-      data: {
-        labels: tierData.map(d => d.tier),
-        datasets: [{
-          label: 'Events',
-          data: tierData.map(d => d.count),
-          backgroundColor: '#6366f1',
-          borderRadius: 4,
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#1f2937' } },
-          x: { grid: { display: false } }
+  function renderTierChart(data) {
+    const canvas = document.getElementById('tierChart');
+    if (data.length === 0) {
+      if (tierChart) { tierChart.destroy(); tierChart = null; }
+      return;
+    }
+    if (tierChart) {
+      tierChart.data.labels = data.map(d => d.tier);
+      tierChart.data.datasets[0].data = data.map(d => d.count);
+      tierChart.update();
+    } else {
+      tierChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.tier),
+          datasets: [{ label: 'Events', data: data.map(d => d.count), backgroundColor: '#6366f1', borderRadius: 4 }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#1f2937' } },
+            x: { grid: { display: false } }
+          }
         }
-      }
-    });
+      });
+    }
   }
 
-  if (typeData.length > 0) {
-    new Chart(document.getElementById('typeChart'), {
-      type: 'doughnut',
-      data: {
-        labels: typeData.map(d => d.event_type),
-        datasets: [{
-          data: typeData.map(d => d.count),
-          backgroundColor: ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'],
-        }]
-      },
-      options: {
-        plugins: { legend: { position: 'bottom' } }
-      }
-    });
+  function renderTypeChart(data) {
+    const canvas = document.getElementById('typeChart');
+    if (data.length === 0) {
+      if (typeChart) { typeChart.destroy(); typeChart = null; }
+      return;
+    }
+    if (typeChart) {
+      typeChart.data.labels = data.map(d => d.event_type);
+      typeChart.data.datasets[0].data = data.map(d => d.count);
+      typeChart.update();
+    } else {
+      typeChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: data.map(d => d.event_type),
+          datasets: [{ data: data.map(d => d.count), backgroundColor: ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
+    }
   }
 
-  // PC charts (active PC stats)
+  // Initial render from server-provided data
+  renderTierChart(<%- JSON.stringify(stats.events_by_tier).replace(/</g, '\\u003c') %>);
+  renderTypeChart(<%- JSON.stringify(stats.events_by_type).replace(/</g, '\\u003c') %>);
+
+  // ---- PC charts (not date-filterable; one-time render) ----
   const pcData = <%- JSON.stringify(activePcStats.rows).replace(/</g, '\\u003c') %>;
-
   if (pcData.length > 0) {
     new Chart(document.getElementById('pcChart'), {
       type: 'bar',
       data: {
         labels: pcData.map(d => d.bracket),
         datasets: [
-          {
-            label: 'Active PCs',
-            data: pcData.map(d => d.active_pcs),
-            backgroundColor: '#6366f1',
-            borderRadius: 4,
-          },
-          {
-            label: 'In Events',
-            data: pcData.map(d => d.in_events),
-            backgroundColor: '#22c55e',
-            borderRadius: 4,
-          }
+          { label: 'Active PCs', data: pcData.map(d => d.active_pcs), backgroundColor: '#6366f1', borderRadius: 4 },
+          { label: 'In Events', data: pcData.map(d => d.in_events), backgroundColor: '#22c55e', borderRadius: 4 }
         ]
       },
       options: {
@@ -293,6 +292,118 @@
       }
     });
   }
+
+  // ---- Client-side filter handling (no page reload) ----
+  const ACTIVE_CLASSES = 'px-3 py-1 rounded text-sm bg-indigo-600 text-white';
+  const INACTIVE_CLASSES = 'px-3 py-1 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600';
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function updateCards(stats) {
+    document.getElementById('cardActiveEvents').textContent = stats.active_events;
+    document.getElementById('cardTotalEvents').textContent = stats.total_events;
+    document.getElementById('cardCompletedEvents').textContent = stats.completed_events;
+    document.getElementById('cardUniquePcs').textContent = stats.total_participants;
+    document.getElementById('cardAvgPartySize').textContent = parseFloat(stats.avg_party_size).toFixed(1);
+  }
+
+  function updateTopDms(top_dms) {
+    const section = document.getElementById('topDmsSection');
+    const body = document.getElementById('topDmsBody');
+    if (top_dms.length === 0) {
+      section.classList.add('hidden');
+      body.innerHTML = '';
+      return;
+    }
+    section.classList.remove('hidden');
+    body.innerHTML = top_dms.map(dm => (
+      '<tr class="border-b border-gray-700/50">'
+      + '<td class="py-2">' + escapeHtml(dm.display) + '</td>'
+      + '<td class="py-2">' + dm.event_count + '</td>'
+      + '</tr>'
+    )).join('');
+  }
+
+  function updateButtons(range) {
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.className = btn.dataset.filter === range ? ACTIVE_CLASSES : INACTIVE_CLASSES;
+    });
+  }
+
+  function buildUrl(range, from, to) {
+    const params = new URLSearchParams();
+    if (range && range !== 'all') params.set('range', range);
+    if (range === 'custom') {
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+    }
+    const qs = params.toString();
+    return '/' + (qs ? '?' + qs : '') + '#event-stats';
+  }
+
+  async function applyFilter(range, from, to, { pushState = true } = {}) {
+    if (pushState) {
+      history.pushState({ range, from, to }, '', buildUrl(range, from, to));
+    }
+    updateButtons(range);
+    document.getElementById('customRange').classList.toggle('hidden', range !== 'custom');
+
+    const apiParams = new URLSearchParams();
+    if (range && range !== 'all') apiParams.set('range', range);
+    if (range === 'custom') {
+      if (from) apiParams.set('from', from);
+      if (to) apiParams.set('to', to);
+    }
+    let res;
+    try {
+      res = await fetch('/api/stats?' + apiParams.toString());
+    } catch (err) {
+      console.error('Failed to fetch /api/stats:', err);
+      return;
+    }
+    if (!res.ok) {
+      console.error('Stats fetch failed:', res.status);
+      return;
+    }
+    const stats = await res.json();
+    updateCards(stats);
+    renderTierChart(stats.events_by_tier);
+    renderTypeChart(stats.events_by_type);
+    updateTopDms(stats.top_dms);
+  }
+
+  // Wire up filter buttons
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const range = btn.dataset.filter;
+      if (range === 'custom') {
+        // Show the custom date form; don't fetch until Apply
+        document.getElementById('customRange').classList.toggle('hidden');
+        return;
+      }
+      applyFilter(range, null, null);
+    });
+  });
+
+  // Wire up custom range form
+  document.getElementById('customRangeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const from = e.target.from.value || null;
+    const to = e.target.to.value || null;
+    applyFilter('custom', from, to);
+  });
+
+  // Back/forward button support
+  window.addEventListener('popstate', () => {
+    const url = new URL(window.location.href);
+    const range = url.searchParams.get('range') || 'all';
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    applyFilter(range, from, to, { pushState: false });
+  });
 </script>
 
 <%- include('partials/foot') %>
