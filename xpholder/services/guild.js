@@ -436,6 +436,12 @@ class guildService {
       await this.db.query(
         `ALTER TABLE ${this.schema}.event_participants ADD COLUMN IF NOT EXISTS removal_reason TEXT;`
       );
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS role_play_channel_id TEXT;`
+      );
+      await this.db.query(
+        `ALTER TABLE ${this.schema}.events ADD COLUMN IF NOT EXISTS role_play_channel_name TEXT;`
+      );
     }
     console.log("Finished updateRegistration");
   }
@@ -528,6 +534,8 @@ class guildService {
         gp_reward INTEGER,
         status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
         original_tier TEXT,
+        role_play_channel_id TEXT,
+        role_play_channel_name TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );`
     );
@@ -568,10 +576,11 @@ class guildService {
     ------
     */
 
-  async createEvent(name, eventType, tier, startDate, dmUserId, dmUsername) {
+  async createEvent(name, eventType, tier, startDate, dmUserId, dmUsername, channelId = null, channelName = null) {
     const res = await this.db.query(
-      `INSERT INTO ${this.schema}.events (name, event_type, tier, start_date) VALUES ($1, $2, $3, $4) RETURNING event_id;`,
-      [name, eventType, tier, startDate]
+      `INSERT INTO ${this.schema}.events (name, event_type, tier, start_date, role_play_channel_id, role_play_channel_name)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING event_id;`,
+      [name, eventType, tier, startDate, channelId, channelName]
     );
     const eventId = res.rows[0].event_id;
     await this.addEventDm(eventId, dmUserId, dmUsername, true);
@@ -652,7 +661,7 @@ class guildService {
   }
 
   async updateEvent(eventId, fields) {
-    const allowed = ["name", "event_type", "tier", "start_date", "end_date", "xp_reward", "gp_reward"];
+    const allowed = ["name", "event_type", "tier", "start_date", "end_date", "xp_reward", "gp_reward", "role_play_channel_id", "role_play_channel_name"];
     const setClauses = [];
     const values = [];
     let i = 1;

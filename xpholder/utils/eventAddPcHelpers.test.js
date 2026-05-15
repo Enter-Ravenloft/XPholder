@@ -138,4 +138,24 @@ describe("buildAddPcMessage", () => {
     expect(droppedField.name).toBe("Dropped (1)");
     expect(droppedField.value).toContain("Cory");
   });
+
+  it("omits Channel field when no role_play_channel set", () => {
+    const result = buildAddPcMessage(eventFixture, [], [], null, []);
+    const fields = result.embeds[0].data.fields;
+    expect(fields.find((f) => f.name === "Channel")).toBeUndefined();
+  });
+
+  it("renders Channel as a mention when role_play_channel_id is set", () => {
+    const event = { ...eventFixture, role_play_channel_id: "1234567890", role_play_channel_name: "rp-room" };
+    const result = buildAddPcMessage(event, [], [], null, []);
+    const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
+    expect(channelField.value).toBe("<#1234567890>");
+  });
+
+  it("falls back to role_play_channel_name when id is missing", () => {
+    const event = { ...eventFixture, role_play_channel_id: null, role_play_channel_name: "rp-room" };
+    const result = buildAddPcMessage(event, [], [], null, []);
+    const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
+    expect(channelField.value).toBe("rp-room");
+  });
 });

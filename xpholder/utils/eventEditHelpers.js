@@ -3,6 +3,8 @@ const {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   UserSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  ChannelType,
   ButtonBuilder,
   ButtonStyle,
   ModalBuilder,
@@ -19,7 +21,7 @@ const REWARD_MAX = 1_000_000;
 
 function parseEventEditCustomId(customId) {
   if (typeof customId !== "string") return null;
-  const match = /^event_edit_(type|tier|dm|text|modal):(\d+)$/.exec(customId);
+  const match = /^event_edit_(type|tier|dm|rp_channel|text|modal):(\d+)$/.exec(customId);
   if (!match) return null;
   return { kind: match[1], eventId: parseInt(match[2], 10) };
 }
@@ -92,28 +94,42 @@ function buildEventEditMessage(event, dms) {
       ? sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ")
       : "—";
 
+  let channelValue = null;
+  if (event.role_play_channel_id) {
+    channelValue = `<#${event.role_play_channel_id}>`;
+  } else if (event.role_play_channel_name) {
+    channelValue = event.role_play_channel_name;
+  }
+
+  const fields = [
+    { inline: true, name: "Type", value: event.event_type },
+    { inline: true, name: "Tier", value: event.tier },
+    { inline: true, name: "Status", value: event.status },
+    { inline: true, name: "Start", value: startDate },
+    { inline: true, name: "End", value: endDate },
+  ];
+  if (channelValue !== null) {
+    fields.push({ inline: true, name: "Channel", value: channelValue });
+  }
+  fields.push(
+    { inline: true, name: "DMs", value: dmList },
+    {
+      inline: true,
+      name: "XP Reward",
+      value: event.xp_reward != null ? `${event.xp_reward}` : "—",
+    },
+    {
+      inline: true,
+      name: "GP Reward",
+      value: event.gp_reward != null ? `${event.gp_reward}` : "—",
+    },
+    { inline: true, name: "Event ID", value: `${event.event_id}` }
+  );
+
   const embed = new EmbedBuilder()
     .setTitle(`Editing: ${event.name}`)
     .setColor(XPHOLDER_COLOUR)
-    .setFields(
-      { inline: true, name: "Type", value: event.event_type },
-      { inline: true, name: "Tier", value: event.tier },
-      { inline: true, name: "Status", value: event.status },
-      { inline: true, name: "Start", value: startDate },
-      { inline: true, name: "End", value: endDate },
-      { inline: true, name: "DMs", value: dmList },
-      {
-        inline: true,
-        name: "XP Reward",
-        value: event.xp_reward != null ? `${event.xp_reward}` : "—",
-      },
-      {
-        inline: true,
-        name: "GP Reward",
-        value: event.gp_reward != null ? `${event.gp_reward}` : "—",
-      },
-      { inline: true, name: "Event ID", value: `${event.event_id}` }
-    )
+    .setFields(...fields)
     .setFooter({ text: "Pick from the menus or click the button to edit text fields." });
 
   const typeRow = new ActionRowBuilder().addComponents(
@@ -138,6 +154,15 @@ function buildEventEditMessage(event, dms) {
       .setPlaceholder("Change primary DM")
   );
 
+  const channelRow = new ActionRowBuilder().addComponents(
+    new ChannelSelectMenuBuilder()
+      .setCustomId(`event_edit_rp_channel:${event.event_id}`)
+      .setPlaceholder("Change RP channel")
+      .setChannelTypes(ChannelType.GuildText)
+      .setMinValues(1)
+      .setMaxValues(1)
+  );
+
   const buttonRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`event_edit_text:${event.event_id}`)
@@ -145,7 +170,7 @@ function buildEventEditMessage(event, dms) {
       .setStyle(ButtonStyle.Primary)
   );
 
-  return { embeds: [embed], components: [typeRow, tierRow, dmRow, buttonRow] };
+  return { embeds: [embed], components: [typeRow, tierRow, dmRow, channelRow, buttonRow] };
 }
 
 function buildEventEditModal(event) {

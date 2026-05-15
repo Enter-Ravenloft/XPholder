@@ -96,17 +96,29 @@ module.exports = {
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ");
 
+    let channelValue = null;
+    if (event.role_play_channel_id) {
+      channelValue = `<#${event.role_play_channel_id}>`;
+    } else if (event.role_play_channel_name) {
+      channelValue = event.role_play_channel_name;
+    }
+
     const fields = [
       { inline: true, name: "Event", value: event.name },
       { inline: true, name: "Type", value: event.event_type },
       { inline: true, name: "Tier", value: event.tier },
+    ];
+    if (channelValue !== null) {
+      fields.push({ inline: true, name: "Channel", value: channelValue });
+    }
+    fields.push(
       { inline: true, name: "Start", value: event.start_date.toISOString().split("T")[0] },
       { inline: true, name: "End", value: endDate },
       { inline: true, name: "DMs", value: dmList },
       { inline: true, name: "XP Reward", value: xpReward != null ? `${xpReward}` : "—" },
       { inline: true, name: "GP Reward", value: gpReward != null ? `${gpReward}` : "—" },
-      { inline: false, name: `Participants (${active.length})`, value: participantList },
-    ];
+      { inline: false, name: `Participants (${active.length})`, value: participantList }
+    );
 
     if (dropped.length > 0) {
       const droppedLines = dropped.map((p) => {

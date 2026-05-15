@@ -64,15 +64,27 @@ module.exports = {
     const startDate = event.start_date.toISOString().split("T")[0];
     const endDate = event.end_date ? event.end_date.toISOString().split("T")[0] : "Ongoing";
 
+    let channelValue = null;
+    if (event.role_play_channel_id) {
+      channelValue = `<#${event.role_play_channel_id}>`;
+    } else if (event.role_play_channel_name) {
+      channelValue = event.role_play_channel_name;
+    }
+
     const fields = [
       { inline: true, name: "Type", value: event.event_type },
       { inline: true, name: "Tier", value: event.tier },
       { inline: true, name: "Status", value: event.status },
+    ];
+    if (channelValue !== null) {
+      fields.push({ inline: true, name: "Channel", value: channelValue });
+    }
+    fields.push(
       { inline: true, name: "Start", value: startDate },
       { inline: true, name: "End", value: endDate },
       { inline: true, name: "DMs", value: dmList },
-      { inline: false, name: `Participants (${active.length})`, value: participantList },
-    ];
+      { inline: false, name: `Participants (${active.length})`, value: participantList }
+    );
 
     if (dropped.length > 0) {
       const droppedLines = dropped.map((p) => {

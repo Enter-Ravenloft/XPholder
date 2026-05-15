@@ -37,16 +37,26 @@ function buildAddPcMessage(
   );
   const participantList = activeLines.length > 0 ? activeLines.join("\n") : "None";
 
+  let channelValue = null;
+  if (event.role_play_channel_id) {
+    channelValue = `<#${event.role_play_channel_id}>`;
+  } else if (event.role_play_channel_name) {
+    channelValue = event.role_play_channel_name;
+  }
+
   const fields = [
     { inline: true, name: "Type", value: event.event_type },
     { inline: true, name: "Tier", value: event.tier },
     { inline: true, name: "Status", value: event.status },
-    {
-      inline: false,
-      name: `Participants (${activeParticipants.length})`,
-      value: participantList,
-    },
   ];
+  if (channelValue !== null) {
+    fields.push({ inline: true, name: "Channel", value: channelValue });
+  }
+  fields.push({
+    inline: false,
+    name: `Participants (${activeParticipants.length})`,
+    value: participantList,
+  });
 
   if (dropped.length > 0) {
     const droppedLines = dropped.map(
