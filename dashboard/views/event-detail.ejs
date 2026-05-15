@@ -27,6 +27,20 @@
         <% } %>
       </p>
     </div>
+    <% if (event.role_play_channel_id || event.role_play_channel_name) { %>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <p class="text-sm text-gray-400">Channel</p>
+      <p class="text-lg font-semibold">
+        <% if (event.role_play_channel_id) { %>
+          <a href="https://discord.com/channels/<%= guildId %>/<%= event.role_play_channel_id %>" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300">
+            <%= event.role_play_channel_name || event.role_play_channel_id %>
+          </a>
+        <% } else { %>
+          <%= event.role_play_channel_name %>
+        <% } %>
+      </p>
+    </div>
+    <% } %>
     <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <p class="text-sm text-gray-400">Start Date</p>
       <p class="text-lg font-semibold"><%= event.start_date ? event.start_date.toISOString().split('T')[0] : '—' %></p>

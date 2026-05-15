@@ -527,6 +527,59 @@ describe("events", () => {
     });
   });
 
+  describe("role-play channel", () => {
+    it("createEvent with channel id and name round-trips both", async () => {
+      const { gService } = ctx;
+      const eventId = await gService.createEvent(
+        "Channel Test",
+        "Mission",
+        "5-7",
+        "2026-05-10",
+        "u1",
+        "User1",
+        "1234567890",
+        "test-channel"
+      );
+      const event = await gService.getEvent(eventId);
+      expect(event.role_play_channel_id).toBe("1234567890");
+      expect(event.role_play_channel_name).toBe("test-channel");
+    });
+
+    it("createEvent without channel leaves both columns null", async () => {
+      const { gService } = ctx;
+      const eventId = await gService.createEvent(
+        "No Channel",
+        "Mission",
+        "5-7",
+        "2026-05-10",
+        "u1",
+        "User1"
+      );
+      const event = await gService.getEvent(eventId);
+      expect(event.role_play_channel_id).toBeNull();
+      expect(event.role_play_channel_name).toBeNull();
+    });
+
+    it("updateEvent updates both channel columns together", async () => {
+      const { gService } = ctx;
+      const eventId = await gService.createEvent(
+        "Update Test",
+        "Mission",
+        "5-7",
+        "2026-05-10",
+        "u1",
+        "User1"
+      );
+      await gService.updateEvent(eventId, {
+        role_play_channel_id: "9999",
+        role_play_channel_name: "renamed-channel",
+      });
+      const event = await gService.getEvent(eventId);
+      expect(event.role_play_channel_id).toBe("9999");
+      expect(event.role_play_channel_name).toBe("renamed-channel");
+    });
+  });
+
   describe("renameCharacterParticipations", () => {
     it("rewrites snapshots that match (character_id, oldName)", async () => {
       const { gService } = ctx;

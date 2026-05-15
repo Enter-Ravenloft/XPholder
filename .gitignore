@@ -88,6 +88,7 @@ lerna-debug.log
 
 # Seed / sample data
 tooling/*.csv
+tooling/discordChannelsSnapshot.json
 
 # System Files
 .DS_Store

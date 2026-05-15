@@ -54,6 +54,12 @@ module.exports = {
         .setDescription("Start Date (YYYY-MM-DD). Defaults to today.")
         .setRequired(false)
     )
+    .addChannelOption((option) =>
+      option
+        .setName("rp_channel")
+        .setDescription("The role-play channel where this event takes place")
+        .setRequired(false)
+    )
     .addBooleanOption((option) =>
       option
         .setName("public")
@@ -86,13 +92,19 @@ module.exports = {
     }
     const startDate = startDateStr || new Date().toISOString().split("T")[0];
 
+    const rpChannel = interaction.options.getChannel("rp_channel");
+    const rpChannelId = rpChannel?.id ?? null;
+    const rpChannelName = rpChannel?.name ?? null;
+
     const eventId = await guildService.createEvent(
       name,
       eventType,
       tier,
       startDate,
       dmUser.id,
-      dmMember.displayName
+      dmMember.displayName,
+      rpChannelId,
+      rpChannelName
     );
 
     const embed = new EmbedBuilder()
@@ -107,6 +119,10 @@ module.exports = {
         { inline: true, name: "Event ID", value: `${eventId}` }
       )
       .setTimestamp();
+
+    if (rpChannel) {
+      embed.addFields({ inline: true, name: "Channel", value: `<#${rpChannelId}>` });
+    }
 
     await interaction.editReply({ embeds: [embed] });
   },
