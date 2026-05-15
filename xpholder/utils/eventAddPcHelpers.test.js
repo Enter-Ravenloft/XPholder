@@ -45,7 +45,7 @@ describe("buildAddPcMessage", () => {
   };
 
   it("returns one embed plus 2 components when no player is selected", () => {
-    const result = buildAddPcMessage(eventFixture, [], null, []);
+    const result = buildAddPcMessage(eventFixture, [], [], null, []);
     expect(result.embeds).toHaveLength(1);
     expect(result.components).toHaveLength(2);
     const customIds = result.components.map((row) => row.components[0].data.custom_id);
@@ -60,7 +60,7 @@ describe("buildAddPcMessage", () => {
       { character_id: "111-1", character_index: 1, name: "Alice" },
       { character_id: "111-2", character_index: 2, name: "Bob" },
     ];
-    const result = buildAddPcMessage(eventFixture, [], "111", availableChars);
+    const result = buildAddPcMessage(eventFixture, [], [], "111", availableChars);
     expect(result.embeds).toHaveLength(1);
     expect(result.components).toHaveLength(3);
     const customIds = result.components.map((row) => row.components[0].data.custom_id);
@@ -72,9 +72,9 @@ describe("buildAddPcMessage", () => {
   });
 
   it("renders 'None' for empty participants", () => {
-    const result = buildAddPcMessage(eventFixture, [], null, []);
+    const result = buildAddPcMessage(eventFixture, [], [], null, []);
     const fields = result.embeds[0].data.fields;
-    expect(fields.find((f) => f.name === "Participants").value).toBe("None");
+    expect(fields.find((f) => f.name.startsWith("Participants")).value).toBe("None");
   });
 
   it("renders bulleted 'Name (Lvl X)' for participants", () => {
@@ -82,19 +82,19 @@ describe("buildAddPcMessage", () => {
       { character_name: "Alice", starting_level: 5 },
       { character_name: "Bob", starting_level: 6 },
     ];
-    const result = buildAddPcMessage(eventFixture, participants, null, []);
+    const result = buildAddPcMessage(eventFixture, participants, [], null, []);
     const fields = result.embeds[0].data.fields;
-    expect(fields.find((f) => f.name === "Participants").value).toBe("• Alice (Lvl 5)\n• Bob (Lvl 6)");
+    expect(fields.find((f) => f.name.startsWith("Participants")).value).toBe("• Alice (Lvl 5)\n• Bob (Lvl 6)");
   });
 
   it("varies UserSelect customId nonce by participant count", () => {
-    const noPart = buildAddPcMessage(eventFixture, [], null, []);
+    const noPart = buildAddPcMessage(eventFixture, [], [], null, []);
     expect(noPart.components[0].components[0].data.custom_id).toBe("event_add_pc_user:42:n0");
 
     const twoPart = buildAddPcMessage(eventFixture, [
       { character_name: "Alice", starting_level: 5 },
       { character_name: "Bob", starting_level: 6 },
-    ], null, []);
+    ], [], null, []);
     expect(twoPart.components[0].components[0].data.custom_id).toBe("event_add_pc_user:42:n2");
   });
 
@@ -103,7 +103,7 @@ describe("buildAddPcMessage", () => {
       { character_id: "111-1", character_index: 1, name: "Alice" },
       { character_id: "111-2", character_index: 2, name: "Bob" },
     ];
-    const result = buildAddPcMessage(eventFixture, [], "111", availableChars);
+    const result = buildAddPcMessage(eventFixture, [], [], "111", availableChars);
     const charSelect = result.components[1].components[0];
     expect(charSelect.options.map((o) => o.data)).toEqual([
       { label: "Alice", value: "1" },
@@ -112,26 +112,49 @@ describe("buildAddPcMessage", () => {
   });
 
   it("renders event name in the title", () => {
-    const result = buildAddPcMessage(eventFixture, [], null, []);
+    const result = buildAddPcMessage(eventFixture, [], [], null, []);
     expect(result.embeds[0].data.title).toBe("Add PCs to Test Event");
   });
 
+  it("decorates death rows with 💀 (Death) in the main participants field", () => {
+    const active = [
+      { character_name: "Alice", starting_level: 5, removal_reason: null },
+      { character_name: "Bob", starting_level: 7, removal_reason: "death" },
+    ];
+    const result = buildAddPcMessage(eventFixture, active, [], null, []);
+    const fields = result.embeds[0].data.fields;
+    const participantsField = fields.find((f) => f.name.startsWith("Participants"));
+    expect(participantsField.value).toContain("Bob 💀 (Death)");
+    expect(participantsField.value).toContain("Alice");
+  });
+
+  it("renders a conditional Dropped field when there are dropped participants", () => {
+    const active = [{ character_name: "Alice", starting_level: 5, removal_reason: null }];
+    const dropped = [{ character_name: "Cory", starting_level: 3, removal_reason: "dropped" }];
+    const result = buildAddPcMessage(eventFixture, active, dropped, null, []);
+    const fields = result.embeds[0].data.fields;
+    const droppedField = fields.find((f) => f.name.startsWith("Dropped"));
+    expect(droppedField).toBeDefined();
+    expect(droppedField.name).toBe("Dropped (1)");
+    expect(droppedField.value).toContain("Cory");
+  });
+
   it("omits Channel field when no role_play_channel set", () => {
-    const result = buildAddPcMessage(eventFixture, [], null, []);
+    const result = buildAddPcMessage(eventFixture, [], [], null, []);
     const fields = result.embeds[0].data.fields;
     expect(fields.find((f) => f.name === "Channel")).toBeUndefined();
   });
 
   it("renders Channel as a mention when role_play_channel_id is set", () => {
     const event = { ...eventFixture, role_play_channel_id: "1234567890", role_play_channel_name: "rp-room" };
-    const result = buildAddPcMessage(event, [], null, []);
+    const result = buildAddPcMessage(event, [], [], null, []);
     const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
     expect(channelField.value).toBe("<#1234567890>");
   });
 
   it("falls back to role_play_channel_name when id is missing", () => {
     const event = { ...eventFixture, role_play_channel_id: null, role_play_channel_name: "rp-room" };
-    const result = buildAddPcMessage(event, [], null, []);
+    const result = buildAddPcMessage(event, [], [], null, []);
     const channelField = result.embeds[0].data.fields.find((f) => f.name === "Channel");
     expect(channelField.value).toBe("rp-room");
   });

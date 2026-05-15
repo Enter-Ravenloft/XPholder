@@ -3,6 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR } = require("../../config.json");
 const { playerName } = require("../../utils/playerName");
 const { resolveEventOption } = require("../../utils/resolveEventOption");
+const { formatParticipantName } = require("../../utils/participantRender");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,16 +43,18 @@ module.exports = {
       return;
     }
 
-    const participants = await guildService.getEventParticipants(eventId);
+    const active = await guildService.getActiveEventParticipants(eventId);
+    const dropped = await guildService.getDroppedEventParticipants(eventId);
     const dms = await guildService.getEventDms(eventId);
 
-    const participantList = participants.length > 0
-      ? participants.map((p) => {
-          const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
-          const player = p.player_id ? ` - <@${p.player_id}>` : "";
-          return `${p.character_name}${level}${player}`;
-        }).join("\n")
-      : "None";
+    const activeLines = active.map((p) => {
+      const name = formatParticipantName(p);
+      const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
+      const player = p.player_id ? ` - <@${p.player_id}>` : "";
+      return `${name}${level}${player}`;
+    });
+    const participantList = activeLines.length > 0 ? activeLines.join("\n") : "None";
+
     const sortedDms = [...dms].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
     const dmList = sortedDms.length > 0
       ? sortedDms.map((d) => playerName(d.username, null) || d.username).join(", ")
@@ -80,8 +83,21 @@ module.exports = {
       { inline: true, name: "Start", value: startDate },
       { inline: true, name: "End", value: endDate },
       { inline: true, name: "DMs", value: dmList },
-      { inline: false, name: `Participants (${participants.length})`, value: participantList }
+      { inline: false, name: `Participants (${active.length})`, value: participantList }
     );
+
+    if (dropped.length > 0) {
+      const droppedLines = dropped.map((p) => {
+        const level = p.starting_level > 1 || p.starting_xp > 0 ? ` (Lvl ${p.starting_level})` : "";
+        const player = p.player_id ? ` - <@${p.player_id}>` : "";
+        return `${p.character_name}${level}${player}`;
+      });
+      fields.push({
+        inline: false,
+        name: `Dropped (${dropped.length})`,
+        value: droppedLines.join("\n"),
+      });
+    }
 
     const embed = new EmbedBuilder()
       .setTitle(`${statusEmoji} ${event.name}`)

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAuth, requireLogin } = require("../middleware/auth");
-const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName } = require("../db");
+const { getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, getDroppedParticipants, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName } = require("../db");
 const { playerName } = require("../../xpholder/utils/playerName");
 
 router.get("/", requireAuth, async (req, res) => {
@@ -89,11 +89,14 @@ router.get("/event/:id", requireAuth, async (req, res) => {
     if (isNaN(eventId)) {
       return res.render("error", { message: "Invalid event ID." });
     }
-    const event = await getEvent(req.session.guildId, eventId);
+    const [event, dropped] = await Promise.all([
+      getEvent(req.session.guildId, eventId),
+      getDroppedParticipants(req.session.guildId, eventId),
+    ]);
     if (!event) {
       return res.render("error", { message: "Event not found." });
     }
-    res.render("event-detail", { event });
+    res.render("event-detail", { event, dropped });
   } catch (error) {
     console.error("Event detail error:", error);
     res.render("error", { message: "Failed to load event." });

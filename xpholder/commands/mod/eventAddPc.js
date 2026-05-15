@@ -32,8 +32,12 @@ async function handleAddPcUserSelect(guildService, interaction) {
   }
 
   const characters = await guildService.getAllCharacters(playerId);
-  const participants = await guildService.getEventParticipants(eventId);
-  const participantIds = new Set(participants.map((p) => p.character_id));
+  const active = await guildService.getActiveEventParticipants(eventId);
+  const dropped = await guildService.getDroppedEventParticipants(eventId);
+  const participantIds = new Set([
+    ...active.map((p) => p.character_id),
+    ...dropped.map((p) => p.character_id),
+  ]);
   const availableCharacters = characters.filter((c) => !participantIds.has(c.character_id));
 
   if (availableCharacters.length === 0) {
@@ -45,7 +49,7 @@ async function handleAddPcUserSelect(guildService, interaction) {
   }
 
   try {
-    await interaction.update(buildAddPcMessage(event, participants, playerId, availableCharacters));
+    await interaction.update(buildAddPcMessage(event, active, dropped, playerId, availableCharacters));
   } catch (err) {
     console.error("interaction.update failed:", err);
     await interaction.followUp({
@@ -98,10 +102,11 @@ async function handleAddPcCharacterSelect(guildService, interaction) {
     throw error;
   }
 
-  const updatedParticipants = await guildService.getEventParticipants(eventId);
+  const updatedActive = await guildService.getActiveEventParticipants(eventId);
+  const updatedDropped = await guildService.getDroppedEventParticipants(eventId);
 
   try {
-    await interaction.update(buildAddPcMessage(event, updatedParticipants, null, []));
+    await interaction.update(buildAddPcMessage(event, updatedActive, updatedDropped, null, []));
   } catch (err) {
     console.error("interaction.update failed:", err);
     await interaction.followUp({
@@ -123,8 +128,9 @@ async function handleAddPcDoneButton(guildService, interaction) {
   const eventId = parsed.eventId;
 
   const event = await guildService.getEvent(eventId);
-  const participants = event ? await guildService.getEventParticipants(eventId) : [];
-  const finalMessage = event ? buildAddPcMessage(event, participants, null, []) : null;
+  const active = event ? await guildService.getActiveEventParticipants(eventId) : [];
+  const dropped = event ? await guildService.getDroppedEventParticipants(eventId) : [];
+  const finalMessage = event ? buildAddPcMessage(event, active, dropped, null, []) : null;
 
   try {
     if (finalMessage) {
@@ -177,8 +183,9 @@ module.exports = {
       return;
     }
 
-    const participants = await guildService.getEventParticipants(eventId);
-    await interaction.editReply(buildAddPcMessage(event, participants, null, []));
+    const active = await guildService.getActiveEventParticipants(eventId);
+    const dropped = await guildService.getDroppedEventParticipants(eventId);
+    await interaction.editReply(buildAddPcMessage(event, active, dropped, null, []));
   },
   async autocomplete(guildService, interaction) {
     const focusedValue = interaction.options.getFocused();
