@@ -121,7 +121,6 @@ The codebase has three distinct testing surfaces, and each wants a different app
 - **`init()` runs every interaction and qualifying message** — ~5 Postgres round-trips per Discord event. `guildService.xpCache` and `last_touched` are placeholder fields for caching that was never wired up.
 - **Level-up race in `main.js:377` `updateCharacterXpAndMessage`** — reads `character.xp`, computes old/new level info from `character.xp + xp`, then issues an unconditional `UPDATE ... xp = xp + $1`. Two parallel awards can both miss the level boundary. Wants a transaction with `RETURNING xp`.
 - **Hard-coded dev role ID** `"1059613628803850261"` at `xpholder/services/guild.js:58` (`isDev()`). Should be config.
-- **`SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP` is `JSON.parse`d at module load** in `xpholder/utils/logging.js` with no try/catch — a malformed env var crashes the bot at boot.
 - **`getXp` falls off the switch** in `xpholder/utils/getters.js` — silently returns 0 if `xpPerPostFormula` is misconfigured.
 - **`updateConfig` / `updateChannel` / `updateRole` clobber their caches** — they call `this.loadInit(table)` without `primaryKey`/`value` args, so `gService.config` / `channels` / `roles` becomes `{undefined: undefined}` after any update. Subsequent `updateChannel`/`updateRole` calls then take the INSERT branch (because `id in this.channels` is false) and hit a primary-key conflict. Workaround in tests: call `init()` between updates. `updateLevel` and `updateCharacterTier` are unaffected.
 - **`buildXPEmbed` line `awardEmbed.setColor;`** (no parens) — color param silently ignored.
@@ -150,5 +149,5 @@ The codebase has three distinct testing surfaces, and each wants a different app
 3. `reportError(context, err)` helper; replace `console.log(error)`; close the Undo FIXME.
 4. Cache `guildService` per guild (small TTL, invalidate on `update*`).
 5. Expand test coverage to a few command handlers.
-6. Tooling hygiene: ESLint + Prettier; `engines` in `package.json`; drop dead deps; validate `SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP` at startup; fix `setColor;`; default-throw in `getXp`.
+6. Tooling hygiene: ESLint + Prettier; `engines` in `package.json`; drop dead deps; fix `setColor;`; default-throw in `getXp`.
 7. Dedupe the `config-schema` comment block from `register.js` and `editConfig.js`.

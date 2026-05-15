@@ -69,8 +69,9 @@ Recommended path. Brings up Postgres + bot + dashboard with one command.
 ## Running the tests
 
 ```sh
-npm test          # single pass
-npm run test:watch
+npm test               # unit suite, single pass
+npm run test:watch     # unit suite, watch mode
+npm run test:integration  # Postgres-backed suite (needs `docker compose up -d db` first)
 ```
 
 Tests use [Vitest](https://vitest.dev/) and live next to the source files they cover (e.g., `xpholder/utils/playerName.test.js`). See [AGENTS.md](AGENTS.md) for current coverage and gaps.

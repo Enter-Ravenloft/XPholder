@@ -3,9 +3,18 @@ const { EmbedBuilder } = require("discord.js");
 const { XPHOLDER_COLOUR, XPHOLDER_RETIRE_COLOUR } = require("../config.json");
 dotenv.config();
 
-const SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP = JSON.parse(
-  process.env.SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP
-);
+const SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP = (() => {
+  const raw = process.env.SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP;
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn(
+      `SERVER_ID_TO_LOGGING_CHANNEL_ID_MAP is not valid JSON; logging disabled. (${err.message})`
+    );
+    return {};
+  }
+})();
 
 async function logCommand(interaction) {
   // CREATING THE LOG EMBED
