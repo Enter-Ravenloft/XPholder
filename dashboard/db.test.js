@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { levelFromXp } from "./db.js";
+import { levelFromXp, bucketCharactersByLevel } from "./db.js";
 
 // A 5-level fixture: level 1 = [0, 100), level 2 = [100, 300),
 // level 3 = [300, 600), level 4 = [600, 1000), level 5 = [1000, ...).
@@ -35,5 +35,61 @@ describe("levelFromXp", () => {
     // 21 thresholds → level 21 would be reachable without the cap.
     const longThresholds = Array.from({ length: 21 }, (_, i) => i * 100);
     expect(levelFromXp(2_000_000, longThresholds)).toBe(20);
+  });
+});
+
+describe("bucketCharactersByLevel", () => {
+  // Brackets covering levels 1-2, 3-4, 5+
+  const BRACKETS = [
+    { label: "1-2", min: 1, max: 2 },
+    { label: "3-4", min: 3, max: 4 },
+    { label: "5-5", min: 5, max: 5 },
+  ];
+
+  it("assigns each character to the bracket containing its level", () => {
+    const result = bucketCharactersByLevel(
+      [
+        { character_id: "a", xp: 0 },     // level 1
+        { character_id: "b", xp: 450 },   // level 3
+        { character_id: "c", xp: 1000 },  // level 5
+      ],
+      BRACKETS,
+      FIXTURE_THRESHOLDS
+    );
+
+    expect([...result["1-2"]]).toEqual(["a"]);
+    expect([...result["3-4"]]).toEqual(["b"]);
+    expect([...result["5-5"]]).toEqual(["c"]);
+  });
+
+  it("deduplicates the same character_id appearing multiple times", () => {
+    const result = bucketCharactersByLevel(
+      [
+        { character_id: "a", xp: 0 },
+        { character_id: "a", xp: 0 },
+        { character_id: "a", xp: 0 },
+      ],
+      BRACKETS,
+      FIXTURE_THRESHOLDS
+    );
+
+    expect(result["1-2"].size).toBe(1);
+  });
+
+  it("drops characters whose level lies outside every bracket", () => {
+    const narrowBrackets = [{ label: "3-4", min: 3, max: 4 }];
+
+    const result = bucketCharactersByLevel(
+      [
+        { character_id: "below", xp: 0 },     // level 1
+        { character_id: "inside", xp: 450 },  // level 3
+        { character_id: "above", xp: 1000 },  // level 5
+      ],
+      narrowBrackets,
+      FIXTURE_THRESHOLDS
+    );
+
+    expect([...result["3-4"]]).toEqual(["inside"]);
+    expect(Object.keys(result)).toEqual(["3-4"]);
   });
 });

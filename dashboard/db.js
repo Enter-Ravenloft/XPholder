@@ -268,6 +268,21 @@ function levelFromXp(xp, thresholds) {
   return 1;
 }
 
+function bucketCharactersByLevel(charsWithXp, brackets, thresholds) {
+  const byBracket = {};
+  for (const b of brackets) byBracket[b.label] = new Set();
+  for (const c of charsWithXp) {
+    const level = levelFromXp(c.xp, thresholds);
+    for (const b of brackets) {
+      if (level >= b.min && level <= b.max) {
+        byBracket[b.label].add(c.character_id);
+        break;
+      }
+    }
+  }
+  return byBracket;
+}
+
 async function getActivePcStats(guildId) {
   validateGuildId(guildId);
   const schema = `guild${guildId}`;
@@ -306,41 +321,29 @@ async function getActivePcStats(guildId) {
     }).sort((a, b) => a.min - b.min);
   }
 
-  // Count all characters per bracket
-  const charsByBracket = {};
-  for (const b of brackets) charsByBracket[b.label] = new Set();
+  const charsByBracket = bucketCharactersByLevel(charsRes.rows, brackets, thresholds);
 
-  for (const c of charsRes.rows) {
-    const level = levelFromXp(c.xp, thresholds);
-    for (const b of brackets) {
-      if (level >= b.min && level <= b.max) {
-        charsByBracket[b.label].add(c.character_id);
-        break;
-      }
-    }
-  }
-
-  // Get PCs in active events, grouped by event tier (only active players)
+  // Get distinct PCs in active events with their current XP, then bucket by PC
+  // level (not event tier) so participants in Open / mismatched-tier events
+  // still count under their character's bracket.
   const activeQuery = hasPlayers
-    ? `SELECT e.tier, COUNT(DISTINCT ep.character_id) as in_events
+    ? `SELECT DISTINCT c.character_id, c.xp
        FROM ${schema}.event_participants ep
        JOIN ${schema}.events e ON ep.event_id = e.event_id
        JOIN ${schema}.characters c ON ep.character_id = c.character_id
        JOIN ${schema}.players p ON c.player_id = p.player_id
        WHERE e.status = 'active'
+         AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
          AND p.is_member = TRUE
-         AND (p.inactive_days IS NULL OR p.inactive_days < 90)
-       GROUP BY e.tier;`
-    : `SELECT e.tier, COUNT(DISTINCT ep.character_id) as in_events
+         AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
+    : `SELECT DISTINCT c.character_id, c.xp
        FROM ${schema}.event_participants ep
        JOIN ${schema}.events e ON ep.event_id = e.event_id
+       JOIN ${schema}.characters c ON ep.character_id = c.character_id
        WHERE e.status = 'active'
-       GROUP BY e.tier;`;
+         AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death');`;
   const activeRes = await pool.query(activeQuery);
-  const inEventsByTier = {};
-  for (const row of activeRes.rows) {
-    inEventsByTier[row.tier] = parseInt(row.in_events);
-  }
+  const inEventsByBracket = bucketCharactersByLevel(activeRes.rows, brackets, thresholds);
 
   // Days since last event started per tier
   const lastEventRes = await pool.query(
@@ -357,7 +360,7 @@ async function getActivePcStats(guildId) {
   // Build result
   const rows = brackets.map((b) => {
     const activePcs = charsByBracket[b.label].size;
-    const inEvents = inEventsByTier[b.label] || 0;
+    const inEvents = inEventsByBracket[b.label].size;
     const pctInEvents = activePcs > 0 ? ((inEvents / activePcs) * 100).toFixed(1) : "0.0";
     const daysSince = lastEventByTier[b.label] != null ? lastEventByTier[b.label] : null;
     return {
@@ -701,4 +704,4 @@ async function getPlayerHistoryByName(guildId, playerId) {
   return byName;
 }
 
-module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, getDroppedParticipants, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
+module.exports = { pool, getRegisteredGuilds, getGuildConfig, getEventStats, getEvents, getEvent, getDroppedParticipants, hasEventsTable, getActivePcStats, getDmStats, hasPlayersTable, getPlayerStats, loadLevelThresholds, levelFromXp, bucketCharactersByLevel, searchPlayersAndCharacters, getPlayerDetail, getPlayerHistoryByName };
