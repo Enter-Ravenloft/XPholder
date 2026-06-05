@@ -57,6 +57,7 @@
           <th class="px-4 py-3 text-right">Active PCs</th>
           <th class="px-4 py-3 text-right"># in Events</th>
           <th class="px-4 py-3 text-right">% in Events</th>
+          <th class="px-4 py-3 text-right">Players Sitting Out</th>
           <th class="px-4 py-3 text-right">Days Since Last Event</th>
         </tr>
       </thead>
@@ -73,6 +74,7 @@
           <td class="px-4 py-3 text-right"><%= row.active_pcs %></td>
           <td class="px-4 py-3 text-right"><%= row.in_events %></td>
           <td class="px-4 py-3 text-right font-bold <%= pctClass %>"><%= row.pct_in_events %>%</td>
+          <td class="px-4 py-3 text-right"><%= row.sitting_out_players %></td>
           <td class="px-4 py-3 text-right text-gray-400"><%= row.days_since_last != null ? row.days_since_last : '—' %></td>
         </tr>
         <% }) %>
@@ -83,6 +85,7 @@
           <td class="px-4 py-3 text-right"><%= activePcStats.totalPcs %></td>
           <td class="px-4 py-3 text-right"><%= activePcStats.totalInEvents %></td>
           <td class="px-4 py-3 text-right"><%= activePcStats.totalPcs > 0 ? ((activePcStats.totalInEvents / activePcStats.totalPcs) * 100).toFixed(1) : '0.0' %>%</td>
+          <td class="px-4 py-3 text-right"><%= activePcStats.totalSittingOutPlayers %></td>
           <td class="px-4 py-3 text-right text-gray-400">
             <% const minDays = activePcStats.rows.filter(r => r.days_since_last != null).map(r => r.days_since_last); %>
             <%= minDays.length > 0 ? Math.min(...minDays) : '—' %>

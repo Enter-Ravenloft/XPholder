@@ -76,6 +76,22 @@ describe("bucketCharactersByLevel", () => {
     expect(result["1-2"].size).toBe(1);
   });
 
+  it("dedupes by an alternate key field when keyField is provided", () => {
+    const result = bucketCharactersByLevel(
+      [
+        { character_id: "a", player_id: "P1", xp: 0 },
+        { character_id: "b", player_id: "P1", xp: 0 },   // same player, level 1
+        { character_id: "c", player_id: "P2", xp: 450 }, // level 3
+      ],
+      BRACKETS,
+      FIXTURE_THRESHOLDS,
+      "player_id"
+    );
+
+    expect([...result["1-2"]]).toEqual(["P1"]);
+    expect([...result["3-4"]]).toEqual(["P2"]);
+  });
+
   it("drops characters whose level lies outside every bracket", () => {
     const narrowBrackets = [{ label: "3-4", min: 3, max: 4 }];
 

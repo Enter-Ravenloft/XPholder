@@ -58,8 +58,11 @@ else
   exit 1
 fi
 
-echo "==> Marking all players as active members (dev has no Discord sync)..."
-docker compose exec -T db psql -U xpholder -d xpholder -c "UPDATE ${DEV_SCHEMA}.players SET is_member = TRUE, inactive_days = NULL;"
+# Player is_member / inactive_days are preserved from the prod backup so the
+# dashboard reflects real engagement. The dev bot doesn't overwrite them
+# because main.js skips syncGuildPlayers when NODE_ENV=test (set in
+# docker-compose.yml). If that guard is ever removed, the next bot start
+# would mark every prod player as departed.
 
 echo "==> Clearing dashboard sessions (forces re-login)..."
 docker compose exec -T db psql -U xpholder -d xpholder -c "DELETE FROM public.session;" 2>/dev/null || true
