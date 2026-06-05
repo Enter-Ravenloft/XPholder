@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# Triggers the daily Heroku PG backup workflow in the xpholder-backups repo
+# via the GitHub workflow_dispatch REST API.
+#
+# Invoked by Heroku Scheduler on the xpholder app. The scheduler job's
+# command must be just `bin/dispatch-backup` (no inline curl, no inline
+# token) — otherwise the resolved command line ends up in Heroku/Logtail
+# logs with the bearer token in plaintext.
+#
+# Requires: GITHUB_DISPATCH_TOKEN config var set on the xpholder app
+# (fine-grained PAT, Actions: read/write on Enter-Ravenloft/xpholder-backups).
+#
+# See Enter-Ravenloft/xpholder-backups → docs/external-cron-setup.md
+# for full setup, rotation, and troubleshooting.
+
+set -euo pipefail
+: "${GITHUB_DISPATCH_TOKEN:?GITHUB_DISPATCH_TOKEN is not set}"
+
+curl -sSf -X POST \
+  -H "Authorization: Bearer $GITHUB_DISPATCH_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/Enter-Ravenloft/xpholder-backups/actions/workflows/backup.yml/dispatches \
+  -d '{"ref":"main"}'
