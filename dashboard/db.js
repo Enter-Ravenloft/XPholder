@@ -268,14 +268,14 @@ function levelFromXp(xp, thresholds) {
   return 1;
 }
 
-function bucketCharactersByLevel(charsWithXp, brackets, thresholds) {
+function bucketCharactersByLevel(charsWithXp, brackets, thresholds, keyField = "character_id") {
   const byBracket = {};
   for (const b of brackets) byBracket[b.label] = new Set();
   for (const c of charsWithXp) {
     const level = levelFromXp(c.xp, thresholds);
     for (const b of brackets) {
       if (level >= b.min && level <= b.max) {
-        byBracket[b.label].add(c.character_id);
+        byBracket[b.label].add(c[keyField]);
         break;
       }
     }
@@ -345,6 +345,35 @@ async function getActivePcStats(guildId) {
   const activeRes = await pool.query(activeQuery);
   const inEventsByBracket = bucketCharactersByLevel(activeRes.rows, brackets, thresholds);
 
+  // Distinct active players (with PCs) who currently have ZERO PCs in any
+  // active event, bucketed by the levels of the PCs they own. A player with
+  // PCs in multiple brackets appears in each of those brackets exactly once;
+  // a player with two PCs in the same bracket still counts as one. Disjoint
+  // from inEventsByBracket — no player appears in both.
+  let sittingOutByBracket = {};
+  for (const b of brackets) sittingOutByBracket[b.label] = new Set();
+  let totalSittingOutPlayers = 0;
+  if (hasPlayers) {
+    const sittingOutRes = await pool.query(
+      `SELECT c.player_id, c.character_id, c.xp
+       FROM ${schema}.characters c
+       JOIN ${schema}.players p ON c.player_id = p.player_id
+       WHERE p.is_member = TRUE
+         AND p.inactive_days IS NULL
+         AND NOT EXISTS (
+           SELECT 1
+           FROM ${schema}.event_participants ep
+           JOIN ${schema}.events e ON ep.event_id = e.event_id
+           JOIN ${schema}.characters c2 ON ep.character_id = c2.character_id
+           WHERE e.status = 'active'
+             AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
+             AND c2.player_id = c.player_id
+         );`
+    );
+    sittingOutByBracket = bucketCharactersByLevel(sittingOutRes.rows, brackets, thresholds, "player_id");
+    totalSittingOutPlayers = new Set(sittingOutRes.rows.map((r) => r.player_id)).size;
+  }
+
   // Days since last event started per tier
   const lastEventRes = await pool.query(
     `SELECT tier, MAX(start_date) as last_start
@@ -368,6 +397,7 @@ async function getActivePcStats(guildId) {
       active_pcs: activePcs,
       in_events: inEvents,
       pct_in_events: pctInEvents,
+      sitting_out_players: sittingOutByBracket[b.label].size,
       days_since_last: daysSince,
     };
   });
@@ -411,7 +441,7 @@ async function getActivePcStats(guildId) {
   );
   const totalActivePlayers = parseInt(activePlayers.rows[0].active_players) || 0;
 
-  return { rows, totalPcs, totalInEvents, totalPlayers, totalActivePlayers, totalActiveMembers };
+  return { rows, totalPcs, totalInEvents, totalPlayers, totalActivePlayers, totalActiveMembers, totalSittingOutPlayers };
 }
 
 async function getDmStats(guildId, dateRange = {}) {
