@@ -295,7 +295,7 @@ async function getActivePcStats(guildId) {
   const charsQuery = hasPlayers
     ? `SELECT c.character_id, c.xp FROM ${schema}.characters c
        JOIN ${schema}.players p ON c.player_id = p.player_id
-       WHERE p.is_member = TRUE AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
+       WHERE p.is_member = TRUE AND p.inactive_days IS NULL;`
     : `SELECT character_id, xp FROM ${schema}.characters;`;
   const charsRes = await pool.query(charsQuery);
 
@@ -335,7 +335,7 @@ async function getActivePcStats(guildId) {
        WHERE e.status = 'active'
          AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
          AND p.is_member = TRUE
-         AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
+         AND p.inactive_days IS NULL;`
     : `SELECT DISTINCT c.character_id, c.xp
        FROM ${schema}.event_participants ep
        JOIN ${schema}.events e ON ep.event_id = e.event_id
@@ -379,17 +379,24 @@ async function getActivePcStats(guildId) {
   let totalPlayers = 0;
   let totalActiveMembers = 0;
   if (await hasPlayersTable(guildId)) {
+    // Restrict to members with at least one PC — matches getPlayerStats.
     const playersRes = await pool.query(
       `SELECT
-        COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
-        COUNT(*) FILTER (WHERE is_member = TRUE AND (inactive_days IS NULL OR inactive_days < 90)) as active_members
-       FROM ${schema}.players;`
+        COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc) as total_members,
+        COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days IS NULL) as active_members
+       FROM (
+         SELECT pl.is_member, pl.inactive_days,
+                EXISTS (SELECT 1 FROM ${schema}.characters c WHERE c.player_id = pl.player_id) AS has_pc
+         FROM ${schema}.players pl
+       ) p;`
     );
     totalPlayers = parseInt(playersRes.rows[0].total_members) || 0;
     totalActiveMembers = parseInt(playersRes.rows[0].active_members) || 0;
   }
 
-  // Active players (member, not inactive 90+) with at least one PC in an active event
+  // Active players (member, not inactive 90+) with at least one PC currently in
+  // an active event. Dropped participations don't count — that PC is no longer
+  // "in" the event.
   const activePlayers = await pool.query(
     `SELECT COUNT(DISTINCT p.player_id) as active_players
      FROM ${schema}.event_participants ep
@@ -398,8 +405,9 @@ async function getActivePcStats(guildId) {
        SELECT c.player_id FROM ${schema}.characters c WHERE c.character_id = ep.character_id
      )) = p.player_id
      WHERE e.status = 'active'
+       AND (ep.removal_reason IS NULL OR ep.removal_reason = 'death')
        AND p.is_member = TRUE
-       AND (p.inactive_days IS NULL OR p.inactive_days < 90);`
+       AND p.inactive_days IS NULL;`
   );
   const totalActivePlayers = parseInt(activePlayers.rows[0].active_players) || 0;
 
@@ -522,16 +530,24 @@ async function getPlayerStats(guildId) {
     };
   }
 
+  // The four "in-server" counts (total/active/inactive_*) restrict to members
+  // who have at least one PC on file — a member without a character isn't a
+  // player from the dashboard's perspective. departed_members is unfiltered.
   const res = await pool.query(
-    `SELECT
-      COUNT(*) FILTER (WHERE is_member = TRUE) as total_members,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND (inactive_days IS NULL OR inactive_days < 90)) as active_members,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 60) as inactive_60,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 90) as inactive_90,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 180) as inactive_180,
-      COUNT(*) FILTER (WHERE is_member = TRUE AND inactive_days = 365) as inactive_365,
-      COUNT(*) FILTER (WHERE is_member = FALSE) as departed_members
-     FROM ${schema}.players;`
+    `WITH p AS (
+       SELECT pl.is_member, pl.inactive_days,
+              EXISTS (SELECT 1 FROM ${schema}.characters c WHERE c.player_id = pl.player_id) AS has_pc
+       FROM ${schema}.players pl
+     )
+     SELECT
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc) as total_members,
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days IS NULL) as active_members,
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days = 60) as inactive_60,
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days = 90) as inactive_90,
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days = 180) as inactive_180,
+       COUNT(*) FILTER (WHERE is_member = TRUE AND has_pc AND inactive_days = 365) as inactive_365,
+       COUNT(*) FILTER (WHERE is_member = FALSE) as departed_members
+     FROM p;`
   );
 
   return res.rows[0];
