@@ -44,6 +44,7 @@ const {
   handleRequestXpCommandButton,
 } = require("./xpholder/commands/everyone/requestXp.js");
 const {
+  handleAddPcOpenButton,
   handleAddPcUserSelect,
   handleAddPcCharacterSelect,
   handleAddPcDoneButton,
@@ -271,6 +272,8 @@ client.on("interactionCreate", async (interaction) => {
       handleXpCommandButton(gService, interaction);
     } else if (interaction.customId.startsWith("event_add_pc_done:")) {
       handleAddPcDoneButton(gService, interaction);
+    } else if (interaction.customId.startsWith("event_add_pc_open:")) {
+      handleAddPcOpenButton(gService, interaction);
     } else if (interaction.customId.startsWith("event_edit_text:")) {
       handleEditTextButton(gService, interaction);
     }

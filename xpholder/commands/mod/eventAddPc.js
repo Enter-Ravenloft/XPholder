@@ -7,6 +7,38 @@ const {
 } = require("../../utils/eventAddPcHelpers");
 const { logEventParticipantAdded } = require("../../utils/logging");
 
+// Opens the add-PC picker from the /event_edit message. Unlike the
+// /event_add_pc command, this entry point works on completed events too — the
+// editor is the only way to reach a non-active event here.
+async function handleAddPcOpenButton(guildService, interaction) {
+  const parsed = parseAddPcCustomId(interaction.customId);
+  if (!parsed) return;
+  const eventId = parsed.eventId;
+
+  const event = await guildService.getEvent(eventId);
+  if (!event) {
+    try {
+      await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
+    } catch (err) {
+      console.error("interaction.update failed:", err);
+    }
+    return;
+  }
+
+  const active = await guildService.getActiveEventParticipants(eventId);
+  const dropped = await guildService.getDroppedEventParticipants(eventId);
+
+  try {
+    await interaction.update(buildAddPcMessage(event, active, dropped, null, []));
+  } catch (err) {
+    console.error("interaction.update failed:", err);
+    await interaction.followUp({
+      content: "The add-PC editor could not be opened. Re-run /event_edit to continue.",
+      ephemeral: true,
+    });
+  }
+}
+
 async function handleAddPcUserSelect(guildService, interaction) {
   const parsed = parseAddPcCustomId(interaction.customId);
   if (!parsed) return;
@@ -22,9 +54,9 @@ async function handleAddPcUserSelect(guildService, interaction) {
   }
 
   const event = await guildService.getEvent(eventId);
-  if (!event || event.status !== "active") {
+  if (!event) {
     try {
-      await interaction.update({ content: "This event is no longer active.", embeds: [], components: [] });
+      await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
     } catch (err) {
       console.error("interaction.update failed:", err);
     }
@@ -68,9 +100,9 @@ async function handleAddPcCharacterSelect(guildService, interaction) {
   const characterId = `${playerId}-${characterIndex}`;
 
   const event = await guildService.getEvent(eventId);
-  if (!event || event.status !== "active") {
+  if (!event) {
     try {
-      await interaction.update({ content: "This event is no longer active.", embeds: [], components: [] });
+      await interaction.update({ content: "This event no longer exists.", embeds: [], components: [] });
     } catch (err) {
       console.error("interaction.update failed:", err);
     }
@@ -194,6 +226,7 @@ module.exports = {
       events.map((e) => ({ name: e.name, value: `${e.event_id}` }))
     );
   },
+  handleAddPcOpenButton,
   handleAddPcUserSelect,
   handleAddPcCharacterSelect,
   handleAddPcDoneButton,

@@ -11,15 +11,15 @@ const { formatParticipantName } = require("./participantRender");
 
 function parseAddPcCustomId(customId) {
   if (typeof customId !== "string") return null;
-  const match = /^event_add_pc_(user|char|done):(\d+)(?::(\d+))?(?::n\d+)?$/.exec(customId);
+  const match = /^event_add_pc_(user|char|done|open):(\d+)(?::(\d+))?(?::n\d+)?$/.exec(customId);
   if (!match) return null;
   const kind = match[1];
   const eventId = parseInt(match[2], 10);
   const playerId = match[3] ?? null;
 
-  // char REQUIRES a playerId; user/done MUST NOT have one
+  // char REQUIRES a playerId; user/done/open MUST NOT have one
   if (kind === "char" && playerId == null) return null;
-  if ((kind === "user" || kind === "done") && playerId != null) return null;
+  if ((kind === "user" || kind === "done" || kind === "open") && playerId != null) return null;
 
   return { kind, eventId, playerId };
 }

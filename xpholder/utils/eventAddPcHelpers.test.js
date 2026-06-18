@@ -10,6 +10,7 @@ describe("parseAddPcCustomId", () => {
     ["event_add_pc_user:42:n3", { kind: "user", eventId: 42, playerId: null }],
     ["event_add_pc_char:42:1234567890", { kind: "char", eventId: 42, playerId: "1234567890" }],
     ["event_add_pc_done:42", { kind: "done", eventId: 42, playerId: null }],
+    ["event_add_pc_open:42", { kind: "open", eventId: 42, playerId: null }],
   ])("parses %s", (customId, expected) => {
     expect(parseAddPcCustomId(customId)).toEqual(expected);
   });
@@ -17,6 +18,7 @@ describe("parseAddPcCustomId", () => {
   it.each([
     "event_add_pc_user:42:extra",     // user must NOT have a playerId segment
     "event_add_pc_done:42:extra",     // done must NOT have a playerId segment
+    "event_add_pc_open:42:extra",     // open must NOT have a playerId segment
     "event_add_pc_char:42",           // char REQUIRES a playerId segment
     "event_add_pc_other:42",          // unknown kind
     "event_add_pc_user:abc",          // non-numeric eventId
