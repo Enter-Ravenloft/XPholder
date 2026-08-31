@@ -167,7 +167,11 @@ function buildEventEditMessage(event, dms) {
     new ButtonBuilder()
       .setCustomId(`event_edit_text:${event.event_id}`)
       .setLabel("Edit Name, Dates & Rewards")
-      .setStyle(ButtonStyle.Primary)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`event_add_pc_open:${event.event_id}`)
+      .setLabel("Add PC")
+      .setStyle(ButtonStyle.Secondary)
   );
 
   return { embeds: [embed], components: [typeRow, tierRow, dmRow, channelRow, buttonRow] };
