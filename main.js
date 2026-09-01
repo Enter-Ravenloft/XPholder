@@ -77,6 +77,49 @@ const client = new Client({
 client.commands = new Collection();
 
 /*
+----------------------------
+CONNECTION & CRASH RESILIENCE
+----------------------------
+Previously main.js registered no client or process error handlers. A dropped
+gateway connection left the process alive but deaf — the bot showed offline and
+stopped responding until a manual dyno restart (2026-09-01 incident). Log every
+gateway lifecycle event so a future drop is visible, and exit on unrecoverable
+states so the Heroku dyno restarts and re-establishes the connection.
+*/
+
+client.on("error", (error) => console.error("Discord client error:", error));
+client.on("shardError", (error, id) =>
+  console.error(`Gateway shard ${id} error:`, error)
+);
+client.on("shardDisconnect", (event, id) =>
+  console.warn(`Gateway shard ${id} disconnected (code ${event?.code})`)
+);
+client.on("shardReconnecting", (id) =>
+  console.warn(`Gateway shard ${id} reconnecting`)
+);
+client.on("shardResume", (id) => console.log(`Gateway shard ${id} resumed`));
+
+// Session invalidated: discord.js cannot resume or reconnect on its own. Exit
+// so the dyno restarts with a fresh session instead of hanging offline.
+client.on("invalidated", () => {
+  console.error("Discord session invalidated — exiting so the dyno restarts");
+  process.exit(1);
+});
+
+// Log stray rejections (attaching a handler also stops Node from killing the
+// process over a single failed API call inside a command handler).
+process.on("unhandledRejection", (reason) =>
+  console.error("Unhandled promise rejection:", reason)
+);
+
+// A truly uncaught exception has left the process in an unknown state — exit
+// loudly so the dyno restarts rather than lingering half-broken.
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception — exiting so the dyno restarts:", error);
+  process.exit(1);
+});
+
+/*
 ----------------
 LOADING COMMANDS
 ----------------

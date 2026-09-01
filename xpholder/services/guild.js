@@ -71,7 +71,6 @@ class guildService {
     );
     const res = await this.db.query(query);
     const exists = res.rows[0].exists === true || res.rows[0].exists === 't';
-    console.log(`Table check: ${this.schema}.${tableName} exists = ${exists} (raw: ${res.rows[0].exists})`);
     return exists;
   }
 
